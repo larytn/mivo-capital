@@ -4,10 +4,10 @@ import Link from "next/link";
 import AccountAnalytics from "./AccountAnalytics";
 
 const statusStyles: Record<string, string> = {
-  PENDING: "bg-yellow-500/20 text-yellow-400",
-  ACTIVE: "bg-green-500/20 text-green-400",
-  PASSED: "bg-blue-500/20 text-blue-400",
-  FAILED: "bg-red-500/20 text-red-400",
+  PENDING: "bg-yellow-500/15 text-yellow-400",
+  ACTIVE: "bg-green-500/15 text-green-400",
+  PASSED: "bg-blue-500/15 text-blue-400",
+  FAILED: "bg-red-500/15 text-red-400",
 };
 
 const statusMap: Record<string, string> = {
@@ -18,7 +18,7 @@ const statusMap: Record<string, string> = {
 };
 
 function money(value: number) {
-  return `$${value.toLocaleString("en-US", {
+  return `$${Number(value || 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -28,16 +28,12 @@ function stageLabel(stage: string) {
   switch (stage) {
     case "PHASE_1":
       return "Phase 1";
-
     case "PHASE_2":
       return "Phase 2";
-
-      case "PHASE_3":
-  return "Phase 3";
-
+    case "PHASE_3":
+      return "Phase 3";
     case "FUNDED":
       return "Funded";
-
     default:
       return stage;
   }
@@ -46,17 +42,13 @@ function stageLabel(stage: string) {
 function accountTypeLabel(accountType: string) {
   switch (accountType) {
     case "THREE_STEP":
-  return "Three-Step";
-
-    case "ONE_STEP":
-      return "One-Step";
-
+      return "Three-Step";
     case "TWO_STEP":
       return "Two-Step";
-
+    case "ONE_STEP":
+      return "One-Step";
     case "INSTANT":
       return "Instant Funding";
-
     default:
       return accountType;
   }
@@ -69,8 +61,7 @@ export default async function AccountPage({
 }) {
   const { id } = await params;
 
- const challenge =
-  await prisma.challenge.findUnique({
+  const challenge = await prisma.challenge.findUnique({
     where: {
       id,
     },
@@ -86,7 +77,6 @@ export default async function AccountPage({
         orderBy: {
           recordedAt: "asc",
         },
-
         take: 500,
       },
     },
@@ -96,17 +86,12 @@ export default async function AccountPage({
     return notFound();
   }
 
-  const isFunded =
-    challenge.stage === "FUNDED";
+  const isFunded = challenge.stage === "FUNDED";
 
   const isEvaluation =
-  challenge.stage === "PHASE_1" ||
-  challenge.stage === "PHASE_2" ||
-  challenge.stage === "PHASE_3";
-
-  /*
-   * PROFIT TARGET
-   */
+    challenge.stage === "PHASE_1" ||
+    challenge.stage === "PHASE_2" ||
+    challenge.stage === "PHASE_3";
 
   const profitTargetAmount =
     challenge.startingBalance *
@@ -118,16 +103,10 @@ export default async function AccountPage({
           100,
           Math.max(
             0,
-            (challenge.profit /
-              profitTargetAmount) *
-              100
+            (challenge.profit / profitTargetAmount) * 100
           )
         )
       : 0;
-
-  /*
-   * TRADING DAYS
-   */
 
   const tradingDaysProgress =
     challenge.minimumTradeDays > 0
@@ -141,10 +120,6 @@ export default async function AccountPage({
           )
         )
       : 100;
-
-  /*
-   * DAILY DRAWDOWN
-   */
 
   const dailyReferenceBalance =
     challenge.dailyStartingBalance ??
@@ -164,19 +139,13 @@ export default async function AccountPage({
     dailyLossLimit > 0
       ? Math.min(
           100,
-          (dailyCurrentLoss /
-            dailyLossLimit) *
-            100
+          (dailyCurrentLoss / dailyLossLimit) * 100
         )
       : 0;
 
   const dailyBreached =
     dailyLossLimit > 0 &&
     dailyCurrentLoss >= dailyLossLimit;
-
-  /*
-   * MAXIMUM DRAWDOWN
-   */
 
   const maximumLossLimit =
     challenge.startingBalance *
@@ -200,81 +169,76 @@ export default async function AccountPage({
 
   const maximumBreached =
     maximumLossLimit > 0 &&
-    maximumCurrentLoss >=
-      maximumLossLimit;
+    maximumCurrentLoss >= maximumLossLimit;
 
   return (
-    <main className="min-h-screen bg-black px-5 py-8 text-white md:px-8 lg:p-10">
-      <div className="mx-auto max-w-6xl">
-        {/* BACK NAVIGATION */}
-
-        <div className="mb-8">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-semibold text-gray-300 transition hover:border-green-500 hover:text-green-400"
-          >
-            <span>←</span>
-            <span>Back to Dashboard</span>
-          </Link>
-        </div>
+    <main className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-10">
+      <div className="mx-auto w-full max-w-6xl">
+        {/* BACK */}
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 transition hover:text-green-400 sm:text-sm"
+        >
+          ← Back to Dashboard
+        </Link>
 
         {/* HEADER */}
+        <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-7">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-500 sm:text-xs">
+                Trading Account
+              </p>
 
-        <div className="flex flex-wrap items-center justify-between gap-5">
-          <div>
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
-              Trading Account
-            </p>
+              <h1 className="mt-2 break-words text-3xl font-black text-white sm:text-4xl">
+                {challenge.account}
+              </h1>
 
-            <h1 className="text-4xl font-bold text-green-500 md:text-5xl">
-              {challenge.account}
-            </h1>
+              <p className="mt-2 break-words text-sm text-gray-500">
+                {challenge.type}
+              </p>
 
-            <p className="mt-2 text-gray-400">
-              {challenge.type}
-            </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full bg-zinc-800 px-3 py-1.5 text-[11px] font-bold text-gray-300">
+                  {accountTypeLabel(
+                    challenge.accountType
+                  )}
+                </span>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-gray-300">
-                {accountTypeLabel(
-                  challenge.accountType
-                )}
-              </span>
+                <span
+                  className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${
+                    isFunded
+                      ? "bg-purple-500/15 text-purple-400"
+                      : "bg-zinc-800 text-gray-300"
+                  }`}
+                >
+                  {stageLabel(challenge.stage)}
+                </span>
+              </div>
+            </div>
 
+            <div>
               <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  isFunded
-                    ? "bg-purple-500/20 text-purple-400"
-                    : "bg-zinc-800 text-gray-300"
+                className={`inline-flex rounded-full px-4 py-2 text-xs font-bold ${
+                  statusStyles[challenge.status] ??
+                  "bg-zinc-800 text-gray-300"
                 }`}
               >
-                {stageLabel(challenge.stage)}
+                {statusMap[challenge.status] ??
+                  challenge.status}
               </span>
             </div>
           </div>
+        </section>
 
-          <span
-            className={`rounded-full px-5 py-2 font-semibold ${
-              statusStyles[
-                challenge.status
-              ] ??
-              "bg-gray-700 text-gray-300"
-            }`}
-          >
-            {statusMap[
-              challenge.status
-            ] ?? challenge.status}
-          </span>
-        </div>
+        {/* OVERVIEW */}
+        <section className="mt-8">
+          <SectionHeading
+            title="Account Overview"
+            subtitle="Current trading account performance."
+          />
 
-        {/* ACCOUNT OVERVIEW */}
-
-        <div className="mt-10">
-          <h2 className="mb-5 text-2xl font-bold">
-            Account Overview
-          </h2>
-
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
             <StatCard
               title="Starting Balance"
               value={money(
@@ -306,24 +270,23 @@ export default async function AccountPage({
               }
             />
 
-            <StatCard
-              title="Withdrawable Profit"
-              value={money(
-                challenge.withdrawableProfit
-              )}
-              valueClass="text-green-400"
-            />
+            <div className="col-span-2 lg:col-span-1">
+              <StatCard
+                title="Withdrawable"
+                value={money(
+                  challenge.withdrawableProfit
+                )}
+                valueClass="text-green-400"
+              />
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* ACCOUNT STAGE */}
+        {/* STAGE */}
+        <section className="mt-8">
+          <SectionHeading title="Account Stage" />
 
-        <div className="mt-10">
-          <h2 className="mb-5 text-2xl font-bold">
-            Account Stage
-          </h2>
-
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
             <StatCard
               title="Account Type"
               value={accountTypeLabel(
@@ -343,39 +306,37 @@ export default async function AccountPage({
               }
             />
 
-            <StatCard
-              title="Stage Status"
-              value={
-                statusMap[
+            <div className="col-span-2 md:col-span-1">
+              <StatCard
+                title="Stage Status"
+                value={
+                  statusMap[challenge.status] ??
                   challenge.status
-                ] ?? challenge.status
-              }
-              valueClass={
-                challenge.status ===
-                "ACTIVE"
-                  ? "text-green-400"
-                  : challenge.status ===
-                      "FAILED"
+                }
+                valueClass={
+                  challenge.status === "ACTIVE"
+                    ? "text-green-400"
+                    : challenge.status === "FAILED"
                     ? "text-red-400"
-                    : challenge.status ===
-                        "PASSED"
-                      ? "text-blue-400"
-                      : "text-yellow-400"
-              }
-            />
+                    : challenge.status === "PASSED"
+                    ? "text-blue-400"
+                    : "text-yellow-400"
+                }
+              />
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* EVALUATION PROGRESS */}
-
+        {/* EVALUATION */}
         {isEvaluation && (
-          <div className="mt-10">
-            <h2 className="mb-5 text-2xl font-bold">
-              Challenge Progress
-            </h2>
+          <section className="mt-8">
+            <SectionHeading
+              title="Challenge Progress"
+              subtitle="Track your objectives and drawdown limits."
+            />
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-              <div className="grid gap-8 md:grid-cols-2">
+            <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-7">
+              <div className="grid gap-7 md:grid-cols-2">
                 <ProgressItem
                   title="Profit Target"
                   current={money(
@@ -384,9 +345,7 @@ export default async function AccountPage({
                   target={money(
                     profitTargetAmount
                   )}
-                  percentage={
-                    profitProgress
-                  }
+                  percentage={profitProgress}
                   status={
                     challenge.profit >=
                       profitTargetAmount &&
@@ -418,9 +377,7 @@ export default async function AccountPage({
                   current={`${money(
                     dailyCurrentLoss
                   )} Used`}
-                  target={money(
-                    dailyLossLimit
-                  )}
+                  target={money(dailyLossLimit)}
                   percentage={
                     dailyDrawdownProgress
                   }
@@ -452,9 +409,7 @@ export default async function AccountPage({
                           1
                         )}% Used`
                   }
-                  danger={
-                    maximumBreached
-                  }
+                  danger={maximumBreached}
                 />
               </div>
 
@@ -466,35 +421,33 @@ export default async function AccountPage({
                 />
               )}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* FUNDED ACCOUNT */}
-
+        {/* FUNDED */}
         {isFunded && (
-          <div className="mt-10">
-            <h2 className="mb-5 text-2xl font-bold">
-              Funded Account
-            </h2>
+          <section className="mt-8">
+            <SectionHeading
+              title="Funded Account"
+              subtitle="Your funded account risk limits."
+            />
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-              <div className="mb-6">
-                <p className="text-sm text-gray-400">
-                  This account is in the
-                  funded stage. There is no
-                  evaluation profit target.
+            <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-7">
+              <div className="rounded-xl border border-zinc-800 bg-black p-4">
+                <p className="text-xs leading-5 text-gray-400 sm:text-sm">
+                  This account is in the funded
+                  stage. There is no evaluation
+                  profit target.
                 </p>
               </div>
 
-              <div className="grid gap-8 md:grid-cols-2">
+              <div className="mt-7 grid gap-7 md:grid-cols-2">
                 <ProgressItem
                   title="Daily Drawdown"
                   current={`${money(
                     dailyCurrentLoss
                   )} Used`}
-                  target={money(
-                    dailyLossLimit
-                  )}
+                  target={money(dailyLossLimit)}
                   percentage={
                     dailyDrawdownProgress
                   }
@@ -526,9 +479,7 @@ export default async function AccountPage({
                           1
                         )}% Used`
                   }
-                  danger={
-                    maximumBreached
-                  }
+                  danger={maximumBreached}
                 />
               </div>
 
@@ -540,61 +491,63 @@ export default async function AccountPage({
                 />
               )}
             </div>
-          </div>
+          </section>
         )}
 
-{/* PERFORMANCE + TRADE JOURNAL */}
+        {/* ANALYTICS */}
+        <div className="mt-8 min-w-0 overflow-hidden">
+          <AccountAnalytics
+            startingBalance={
+              challenge.startingBalance
+            }
+            snapshots={challenge.snapshots.map(
+              (snapshot) => ({
+                id: snapshot.id,
+                balance: snapshot.balance,
+                equity: snapshot.equity,
+                recordedAt:
+                  snapshot.recordedAt.toISOString(),
+              })
+            )}
+            trades={challenge.trades.map(
+              (trade) => ({
+                id: trade.id,
+                ticket: trade.ticket,
+                symbol: trade.symbol,
+                type: trade.type,
+                volume: trade.volume,
+                openPrice: trade.openPrice,
+                closePrice: trade.closePrice,
+                stopLoss: trade.stopLoss,
+                takeProfit: trade.takeProfit,
+                openedAt:
+                  trade.openedAt.toISOString(),
+                closedAt:
+                  trade.closedAt?.toISOString() ??
+                  null,
+                commission:
+                  trade.commission,
+                swap: trade.swap,
+                profit: trade.profit,
+              })
+            )}
+          />
+        </div>
 
-<AccountAnalytics
-  startingBalance={
-    challenge.startingBalance
-  }
-  snapshots={challenge.snapshots.map(
-    (snapshot) => ({
-      id: snapshot.id,
-      balance: snapshot.balance,
-      equity: snapshot.equity,
-      recordedAt:
-        snapshot.recordedAt.toISOString(),
-    })
-  )}
-  trades={challenge.trades.map(
-    (trade) => ({
-      id: trade.id,
-      ticket: trade.ticket,
-      symbol: trade.symbol,
-      type: trade.type,
-      volume: trade.volume,
-      openPrice: trade.openPrice,
-      closePrice: trade.closePrice,
-      stopLoss: trade.stopLoss,
-      takeProfit: trade.takeProfit,
-      openedAt:
-        trade.openedAt.toISOString(),
-      closedAt:
-        trade.closedAt?.toISOString() ??
-        null,
-      commission: trade.commission,
-      swap: trade.swap,
-      profit: trade.profit,
-    })
-  )}
-/>
-        {/* ACCOUNT DETAILS */}
-
-        <div className="mt-10 grid gap-6 md:grid-cols-2">
+        {/* DETAILS */}
+        <section className="mt-8 grid gap-5 lg:grid-cols-2">
           {/* TRADING ACCOUNT */}
-
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <h2 className="mb-2 text-xl font-bold">
+          <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-7">
+            <h2 className="text-xl font-black">
               Trading Account
             </h2>
 
-            <p className="mb-6 text-sm text-gray-500">
-              Platform credentials and connection details.
+            <p className="mt-2 text-xs leading-5 text-gray-500 sm:text-sm">
+              Platform credentials and connection
+              details.
             </p>
 
-            <div className="space-y-4">
+            <div className="mt-6 space-y-4">
               <Row
                 label="Platform"
                 value={
@@ -646,19 +599,19 @@ export default async function AccountPage({
           </div>
 
           {/* OBJECTIVES */}
-
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <h2 className="mb-2 text-xl font-bold">
+          <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-7">
+            <h2 className="text-xl font-black">
               {isFunded
                 ? "Trading Rules"
                 : "Trading Objectives"}
             </h2>
 
-            <p className="mb-6 text-sm text-gray-500">
-              Rules and objectives for this account.
+            <p className="mt-2 text-xs leading-5 text-gray-500 sm:text-sm">
+              Rules and objectives for this
+              account.
             </p>
 
-            <div className="space-y-4">
+            <div className="mt-6 space-y-4">
               {isEvaluation && (
                 <Row
                   label="Profit Target"
@@ -695,25 +648,46 @@ export default async function AccountPage({
               href="https://www.metatrader5.com/en/download"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-8 inline-block rounded-xl bg-green-500 px-6 py-3 font-bold text-black transition hover:bg-green-400"
+              className="mt-7 block w-full rounded-xl bg-green-500 px-6 py-3.5 text-center text-sm font-black text-black transition hover:bg-green-400 sm:inline-block sm:w-auto"
             >
               Download MT5
             </a>
           </div>
-        </div>
+        </section>
 
-        {/* BOTTOM NAVIGATION */}
-
-        <div className="mt-10 border-t border-zinc-800 pt-6">
+        {/* BOTTOM */}
+        <div className="mt-8 border-t border-zinc-800 pb-4 pt-6">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 transition hover:text-green-400"
+            className="text-xs font-semibold text-gray-500 transition hover:text-green-400 sm:text-sm"
           >
             ← Back to Dashboard
           </Link>
         </div>
       </div>
     </main>
+  );
+}
+
+function SectionHeading({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-xl font-black sm:text-2xl">
+        {title}
+      </h2>
+
+      {subtitle && (
+        <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+          {subtitle}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -727,13 +701,13 @@ function StatCard({
   valueClass?: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-      <p className="text-sm text-gray-400">
+    <div className="h-full min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 p-4 sm:p-5">
+      <p className="text-[11px] leading-4 text-gray-500 sm:text-sm">
         {title}
       </p>
 
       <p
-        className={`mt-2 text-2xl font-bold ${valueClass}`}
+        className={`mt-2 break-words text-base font-black sm:text-xl ${valueClass}`}
       >
         {value}
       </p>
@@ -757,31 +731,31 @@ function ProgressItem({
   danger: boolean;
 }) {
   return (
-    <div>
-      <div className="flex items-center justify-between gap-4">
-        <p className="font-semibold">
+    <div className="min-w-0">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-bold">
           {title}
         </p>
 
         <span
-          className={`text-sm font-semibold ${
+          className={`shrink-0 text-[11px] font-bold ${
             danger
               ? "text-red-400"
               : status === "Completed"
-                ? "text-green-400"
-                : "text-gray-400"
+              ? "text-green-400"
+              : "text-gray-500"
           }`}
         >
           {status}
         </span>
       </div>
 
-      <div className="mt-3 flex items-end justify-between gap-4">
-        <p className="text-xl font-bold">
+      <div className="mt-3">
+        <p className="break-words text-lg font-black sm:text-xl">
           {current}
         </p>
 
-        <p className="text-sm text-gray-500">
+        <p className="mt-1 break-words text-[11px] text-gray-500 sm:text-xs">
           Limit/Target: {target}
         </p>
       </div>
@@ -796,16 +770,13 @@ function ProgressItem({
           style={{
             width: `${Math.min(
               100,
-              Math.max(
-                0,
-                percentage
-              )
+              Math.max(0, percentage)
             )}%`,
           }}
         />
       </div>
 
-      <p className="mt-2 text-xs text-gray-500">
+      <p className="mt-2 text-[10px] text-gray-600">
         {percentage.toFixed(1)}%
       </p>
     </div>
@@ -820,12 +791,12 @@ function Row({
   value: string;
 }) {
   return (
-    <div className="flex justify-between gap-5 border-b border-zinc-800 pb-3">
-      <span className="text-gray-400">
+    <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-4 border-b border-zinc-800 pb-3 last:border-0">
+      <span className="text-xs text-gray-500 sm:text-sm">
         {label}
       </span>
 
-      <span className="text-right font-semibold">
+      <span className="min-w-0 break-all text-right text-xs font-bold text-gray-200 sm:text-sm">
         {value}
       </span>
     </div>
@@ -838,12 +809,12 @@ function BreachMessage({
   reason: string;
 }) {
   return (
-    <div className="mt-8 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-      <p className="font-semibold text-red-400">
+    <div className="mt-7 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+      <p className="text-sm font-bold text-red-400">
         Account Breach
       </p>
 
-      <p className="mt-1 text-sm text-red-300">
+      <p className="mt-2 break-words text-xs leading-5 text-red-300 sm:text-sm">
         {reason}
       </p>
     </div>
