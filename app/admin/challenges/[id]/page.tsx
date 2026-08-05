@@ -1,6 +1,7 @@
 import AssignForm from "./AssignForm";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 
 const accountTypeLabels: Record<string, string> = {
   ONE_STEP: "One-Step",
@@ -24,10 +25,10 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusStyles: Record<string, string> = {
-  PENDING: "bg-yellow-500/20 text-yellow-400",
-  ACTIVE: "bg-green-500/20 text-green-400",
-  PASSED: "bg-blue-500/20 text-blue-400",
-  FAILED: "bg-red-500/20 text-red-400",
+  PENDING: "bg-yellow-500/15 text-yellow-400",
+  ACTIVE: "bg-green-500/15 text-green-400",
+  PASSED: "bg-blue-500/15 text-blue-400",
+  FAILED: "bg-red-500/15 text-red-400",
 };
 
 export default async function AssignAccountPage({
@@ -52,95 +53,117 @@ export default async function AssignAccountPage({
   }
 
   return (
-    <main className="min-h-screen bg-black p-10 text-white">
-      <div className="mx-auto max-w-3xl">
+    <main className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-10">
+      <div className="mx-auto w-full max-w-4xl">
+        {/* BACK */}
+        <Link
+          href="/admin/challenges"
+          className="inline-flex items-center text-xs font-bold text-gray-500 transition hover:text-green-400 sm:text-sm"
+        >
+          ← Challenge Management
+        </Link>
 
         {/* HEADER */}
+        <section className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-7">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-green-500 sm:text-xs">
+            Mivo Capital Admin
+          </p>
 
-        <div className="mb-8 rounded-2xl bg-zinc-900 p-8">
-          <h1 className="text-4xl font-bold text-green-500">
+          <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-4xl">
             Trading Account Management
           </h1>
 
-          <p className="mt-2 text-gray-400">
-            {challenge.user.name} ({challenge.user.email})
-          </p>
+          <div className="mt-4 rounded-xl bg-black p-4">
+            <p className="break-words text-sm font-bold text-white sm:text-base">
+              {challenge.user.name}
+            </p>
 
-          <div className="mt-5 flex flex-wrap gap-3 text-sm">
-            <span className="rounded-lg bg-zinc-800 px-3 py-1.5">
+            <p className="mt-1 break-all text-xs text-gray-500 sm:text-sm">
+              {challenge.user.email}
+            </p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-lg bg-zinc-800 px-3 py-1.5 text-[11px] font-bold text-gray-300 sm:text-xs">
               {challenge.account}
             </span>
 
-            <span className="rounded-lg bg-zinc-800 px-3 py-1.5">
-              {accountTypeLabels[challenge.accountType] ??
-                challenge.accountType}
+            <span className="rounded-lg bg-zinc-800 px-3 py-1.5 text-[11px] font-bold text-gray-300 sm:text-xs">
+              {accountTypeLabels[
+                challenge.accountType
+              ] ?? challenge.accountType}
             </span>
 
             <span
-              className={`rounded-lg px-3 py-1.5 ${
+              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold sm:text-xs ${
                 challenge.stage === "FUNDED"
-                  ? "bg-purple-500/20 text-purple-400"
+                  ? "bg-purple-500/15 text-purple-400"
                   : "bg-zinc-800 text-gray-300"
               }`}
             >
-              {stageLabels[challenge.stage] ?? challenge.stage}
+              {stageLabels[challenge.stage] ??
+                challenge.stage}
             </span>
 
             <span
-              className={`rounded-lg px-3 py-1.5 ${
+              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold sm:text-xs ${
                 statusStyles[challenge.status] ??
                 "bg-zinc-800 text-gray-300"
               }`}
             >
-              {statusLabels[challenge.status] ?? challenge.status}
+              {statusLabels[challenge.status] ??
+                challenge.status}
             </span>
           </div>
-        </div>
+        </section>
 
-        {/* ASSIGN TRADING ACCOUNT */}
-
-        <div className="rounded-2xl bg-zinc-900 p-8">
-          <h2 className="text-2xl font-bold">
+        {/* ASSIGN ACCOUNT */}
+        <section className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:mt-6 sm:p-7">
+          <h2 className="text-xl font-black sm:text-2xl">
             Assign Trading Account
           </h2>
 
-          <p className="mb-6 mt-2 text-sm text-gray-400">
-            Assign or update the trader&apos;s platform and trading
-            credentials.
+          <p className="mt-2 text-xs leading-5 text-gray-500 sm:text-sm sm:leading-6">
+            Assign or update the trader&apos;s platform and
+            trading credentials.
           </p>
 
-          <AssignForm
-            challengeId={challenge.id}
-            platform={challenge.platform ?? "MT5"}
-            broker={challenge.broker ?? "Eightcap"}
-            server={challenge.server ?? ""}
-            login={challenge.mt5Login ?? ""}
-            password={challenge.mt5Password ?? ""}
-            investorPassword={challenge.investorPassword ?? ""}
-          />
-        </div>
+          <div className="mt-6 min-w-0">
+            <AssignForm
+              challengeId={challenge.id}
+              platform={challenge.platform ?? "MT5"}
+              broker={challenge.broker ?? "Eightcap"}
+              server={challenge.server ?? ""}
+              login={challenge.mt5Login ?? ""}
+              password={challenge.mt5Password ?? ""}
+              investorPassword={
+                challenge.investorPassword ?? ""
+              }
+            />
+          </div>
+        </section>
 
-        {/* AUTOMATED TRADING OVERVIEW */}
-
-        <div className="mt-8 rounded-2xl bg-zinc-900 p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold">
+        {/* ACCOUNT OVERVIEW */}
+        <section className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:mt-6 sm:p-7">
+          <div>
+            <h2 className="text-xl font-black sm:text-2xl">
               Trading Account Overview
             </h2>
 
-            <p className="mt-2 text-sm text-gray-400">
-              Trading performance and evaluation data are updated
-              automatically by the Mivo trading system.
+            <p className="mt-2 text-xs leading-5 text-gray-500 sm:text-sm sm:leading-6">
+              Trading performance and evaluation data are
+              updated automatically by the Mivo trading
+              system.
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
             <OverviewField
               label="Account Type"
               value={
-                accountTypeLabels[challenge.accountType] ??
-                challenge.accountType
+                accountTypeLabels[
+                  challenge.accountType
+                ] ?? challenge.accountType
               }
             />
 
@@ -150,6 +173,11 @@ export default async function AssignAccountPage({
                 stageLabels[challenge.stage] ??
                 challenge.stage
               }
+              valueClass={
+                challenge.stage === "FUNDED"
+                  ? "text-purple-400"
+                  : "text-white"
+              }
             />
 
             <OverviewField
@@ -158,31 +186,54 @@ export default async function AssignAccountPage({
                 statusLabels[challenge.status] ??
                 challenge.status
               }
+              valueClass={
+                challenge.status === "ACTIVE"
+                  ? "text-green-400"
+                  : challenge.status === "PASSED"
+                  ? "text-blue-400"
+                  : challenge.status === "FAILED"
+                  ? "text-red-400"
+                  : "text-yellow-400"
+              }
             />
 
             <OverviewField
               label="MT5 Login"
-              value={challenge.mt5Login || "Not assigned"}
+              value={
+                challenge.mt5Login ||
+                "Not assigned"
+              }
             />
 
             <OverviewField
               label="Starting Balance"
-              value={money(challenge.startingBalance)}
+              value={money(
+                challenge.startingBalance
+              )}
             />
 
             <OverviewField
               label="Current Balance"
-              value={money(challenge.currentBalance)}
+              value={money(
+                challenge.currentBalance
+              )}
             />
 
             <OverviewField
               label="Current Equity"
-              value={money(challenge.currentEquity)}
+              value={money(
+                challenge.currentEquity
+              )}
             />
 
             <OverviewField
               label="Profit"
               value={money(challenge.profit)}
+              valueClass={
+                challenge.profit >= 0
+                  ? "text-green-400"
+                  : "text-red-400"
+              }
             />
 
             <OverviewField
@@ -207,7 +258,10 @@ export default async function AssignAccountPage({
 
             <OverviewField
               label="Withdrawable Profit"
-              value={money(challenge.withdrawableProfit)}
+              value={money(
+                challenge.withdrawableProfit
+              )}
+              valueClass="text-green-400"
             />
 
             <OverviewField
@@ -221,16 +275,26 @@ export default async function AssignAccountPage({
           </div>
 
           {challenge.breachReason && (
-            <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-5">
-              <p className="text-sm font-semibold text-red-400">
+            <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 sm:p-5">
+              <p className="text-xs font-bold uppercase tracking-wide text-red-400">
                 Breach Reason
               </p>
 
-              <p className="mt-2 text-sm text-red-300">
+              <p className="mt-2 break-words text-xs leading-5 text-red-300 sm:text-sm">
                 {challenge.breachReason}
               </p>
             </div>
           )}
+        </section>
+
+        {/* BOTTOM */}
+        <div className="mt-7 border-t border-zinc-900 pb-4 pt-6">
+          <Link
+            href="/admin/challenges"
+            className="text-xs font-bold text-gray-500 transition hover:text-green-400 sm:text-sm"
+          >
+            ← Back to Challenges
+          </Link>
         </div>
       </div>
     </main>
@@ -240,17 +304,21 @@ export default async function AssignAccountPage({
 function OverviewField({
   label,
   value,
+  valueClass = "text-white",
 }: {
   label: string;
   value: string;
+  valueClass?: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-      <p className="text-xs uppercase tracking-wide text-gray-500">
+    <div className="min-w-0 rounded-xl border border-zinc-800 bg-black p-3 sm:p-4">
+      <p className="text-[9px] font-bold uppercase leading-4 tracking-wide text-gray-600 sm:text-xs">
         {label}
       </p>
 
-      <p className="mt-2 font-semibold text-white">
+      <p
+        className={`mt-1.5 break-words text-xs font-black sm:mt-2 sm:text-sm ${valueClass}`}
+      >
         {value}
       </p>
     </div>
