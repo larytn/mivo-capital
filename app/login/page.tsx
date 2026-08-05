@@ -9,102 +9,172 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
- const handleLogin = async () => {
-  try {
-    console.log("1. Sending login request...");
-
-    const response = await fetch("/api/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    });
-
-    console.log("2. Response status:", response.status);
-
-    const data = await response.json();
-
-    console.log("3. Response data:", data);
-
-    if (!response.ok) {
-      alert(data.error || "Login failed");
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      alert("Please enter your email and password.");
       return;
     }
 
-    console.log("4. Login successful");
+    try {
+      setLoading(true);
 
-    localStorage.setItem("user", JSON.stringify(data.user));
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
 
-    console.log("5. Before redirect");
+      const data = await response.json();
 
-    router.push("/dashboard");
+      if (!response.ok) {
+        alert(data.error || "Login failed");
+        return;
+      }
 
-    console.log("6. router.push called");
-  } catch (error) {
-    console.error(error);
-    alert("Something went wrong");
-  }
-};
+      localStorage.setItem(
+        "user",
+        JSON.stringify(data.user)
+      );
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (error) {
+      console.error("LOGIN ERROR:", error);
+      alert("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "Enter" && !loading) {
+      handleLogin();
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-black flex items-center justify-center">
-      <div className="bg-gray-900 p-10 rounded-2xl w-full max-w-md">
+    <main className="flex min-h-screen items-center justify-center bg-black px-4 py-8 text-white sm:px-6">
+      <div className="w-full max-w-md">
+        {/* BRAND */}
+        <div className="mb-7 text-center sm:mb-8">
+          <Link
+            href="/"
+            className="inline-block text-2xl font-black tracking-tight text-green-500 sm:text-3xl"
+          >
+            Mivo Capital
+          </Link>
 
-        <h1 className="text-4xl font-bold text-green-500 text-center">
-          Mivo Capital
-        </h1>
+          <p className="mt-2 text-xs text-gray-500 sm:text-sm">
+            Trade. Perform. Get Funded.
+          </p>
+        </div>
 
-        <p className="text-gray-400 text-center mt-2">
-          Login to your account
-        </p>
+        {/* LOGIN CARD */}
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl sm:p-8">
+          <div className="text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-500 sm:text-xs">
+              Welcome Back
+            </p>
 
-        <input
-          type="email"
-          placeholder="Email Address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full mt-8 p-4 rounded-lg bg-gray-800 text-white outline-none"
-        />
+            <h1 className="mt-2 text-2xl font-black sm:text-3xl">
+              Login to Your Account
+            </h1>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mt-4 p-4 rounded-lg bg-gray-800 text-white outline-none"
-        />
+            <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-gray-500 sm:text-sm">
+              Access your dashboard, trading accounts and Mivo
+              Capital services.
+            </p>
+          </div>
 
-        <button
-          onClick={handleLogin}
-          className="w-full mt-6 bg-green-500 text-black font-bold py-4 rounded-lg hover:bg-green-400"
-        >
-          Login
-        </button>
+          {/* EMAIL */}
+          <div className="mt-7">
+            <label
+              htmlFor="email"
+              className="mb-2 block text-xs font-medium text-gray-400 sm:text-sm"
+            >
+              Email Address
+            </label>
 
-<p className="mt-5 text-center text-sm text-gray-400">
-  Don&apos;t have an account?{" "}
-  <Link
-    href="/signup"
-    className="font-semibold text-green-500 hover:text-green-400"
-  >
-    Sign Up
-  </Link>
-</p>
+            <input
+              id="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={loading}
+              className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60 sm:py-4"
+            />
+          </div>
 
-<div className="mt-4 text-center">
-  <Link
-    href="/"
-    className="text-sm text-gray-500 transition hover:text-white"
-  >
-    ← Back to Home
-  </Link>
-</div>
+          {/* PASSWORD */}
+          <div className="mt-4">
+            <label
+              htmlFor="password"
+              className="mb-2 block text-xs font-medium text-gray-400 sm:text-sm"
+            >
+              Password
+            </label>
 
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={loading}
+              className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60 sm:py-4"
+            />
+          </div>
+
+          {/* LOGIN */}
+          <button
+            type="button"
+            onClick={handleLogin}
+            disabled={
+              loading ||
+              !email.trim() ||
+              !password
+            }
+            className="mt-6 w-full rounded-xl bg-green-500 px-6 py-3.5 text-sm font-black text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50 sm:py-4"
+          >
+            {loading ? "Logging In..." : "Login"}
+          </button>
+
+          {/* SIGNUP */}
+          <p className="mt-6 text-center text-xs text-gray-400 sm:text-sm">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/signup"
+              className="font-bold text-green-500 transition hover:text-green-400"
+            >
+              Sign Up
+            </Link>
+          </p>
+        </section>
+
+        {/* BACK */}
+        <div className="mt-6 text-center">
+          <Link
+            href="/"
+            className="text-xs text-gray-500 transition hover:text-white sm:text-sm"
+          >
+            ← Back to Home
+          </Link>
+        </div>
       </div>
     </main>
   );
