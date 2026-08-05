@@ -30,11 +30,16 @@ export default function AdminWithdrawalsPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const loadWithdrawals = async () => {
+  async function loadWithdrawals() {
     try {
       const response = await fetch("/api/admin/withdrawals", {
         cache: "no-store",
       });
+
+      if (response.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
 
       const data = await response.json();
 
@@ -50,16 +55,16 @@ export default function AdminWithdrawalsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
     loadWithdrawals();
   }, []);
 
-  const updateStatus = async (
+  async function updateStatus(
     withdrawalId: string,
     status: "APPROVED" | "REJECTED" | "PAID"
-  ) => {
+  ) {
     let adminNote = "";
 
     if (status === "REJECTED") {
@@ -67,9 +72,7 @@ export default function AdminWithdrawalsPage() {
         "Enter the reason for rejecting this withdrawal:"
       );
 
-      if (reason === null) {
-        return;
-      }
+      if (reason === null) return;
 
       if (!reason.trim()) {
         alert("Please enter a rejection reason.");
@@ -84,9 +87,7 @@ export default function AdminWithdrawalsPage() {
         "Confirm that this withdrawal has been paid?"
       );
 
-      if (!confirmed) {
-        return;
-      }
+      if (!confirmed) return;
     }
 
     try {
@@ -111,8 +112,6 @@ export default function AdminWithdrawalsPage() {
         return;
       }
 
-      alert("Withdrawal updated successfully!");
-
       await loadWithdrawals();
     } catch (error) {
       console.error(error);
@@ -120,128 +119,194 @@ export default function AdminWithdrawalsPage() {
     } finally {
       setUpdatingId(null);
     }
-  };
+  }
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-black p-10 text-white">
-        <h1 className="text-4xl font-bold text-green-500">
+  const pending = withdrawals.filter(
+    (item) => item.status === "PENDING"
+  ).length;
+
+  const approved = withdrawals.filter(
+    (item) => item.status === "APPROVED"
+  ).length;
+
+  const paid = withdrawals.filter(
+    (item) => item.status === "PAID"
+  ).length;
+
+  return (
+    <div className="mx-auto w-full max-w-7xl">
+      {/* HEADER */}
+
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-green-500 sm:text-sm">
+          Mivo Capital Admin
+        </p>
+
+        <h1 className="mt-2 text-3xl font-black sm:text-4xl">
           Withdrawals
         </h1>
 
-        <p className="mt-6 text-gray-400">
-          Loading withdrawal requests...
-        </p>
-      </main>
-    );
-  }
-
-  return (
-    <main className="min-h-screen bg-black p-10 text-white">
-      <div className="mx-auto max-w-7xl">
-        <h1 className="text-4xl font-bold text-green-500">
-          Withdrawal Management
-        </h1>
-
-        <p className="mt-2 text-gray-400">
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400 sm:text-base">
           Review and manage trader payout requests.
         </p>
+      </div>
 
-        {withdrawals.length === 0 ? (
-          <div className="mt-10 rounded-2xl bg-gray-900 p-8 text-gray-400">
-            No withdrawal requests yet.
+      {/* STATS */}
+
+      <section className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        <StatCard
+          label="Total"
+          value={loading ? "..." : withdrawals.length}
+        />
+
+        <StatCard
+          label="Pending"
+          value={loading ? "..." : pending}
+        />
+
+        <StatCard
+          label="Approved"
+          value={loading ? "..." : approved}
+        />
+
+        <StatCard
+          label="Paid"
+          value={loading ? "..." : paid}
+        />
+      </section>
+
+      {/* WITHDRAWALS */}
+
+      <section className="mt-8">
+        {loading ? (
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center text-sm text-gray-400">
+            Loading withdrawal requests...
+          </div>
+        ) : withdrawals.length === 0 ? (
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-10 text-center">
+            <h2 className="font-bold">
+              No Withdrawal Requests
+            </h2>
+
+            <p className="mt-2 text-sm text-gray-500">
+              Trader payout requests will appear here.
+            </p>
           </div>
         ) : (
-          <div className="mt-10 space-y-6">
+          <div className="space-y-4">
             {withdrawals.map((withdrawal) => (
-              <div
+              <article
                 key={withdrawal.id}
-                className="rounded-2xl border border-gray-800 bg-gray-900 p-8"
+                className="min-w-0 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900"
               >
-                <div className="flex flex-wrap items-start justify-between gap-5">
-                  <div>
-                    <h2 className="text-3xl font-bold text-green-500">
-                      ${withdrawal.amount.toLocaleString()}
-                    </h2>
+                {/* TOP */}
 
-                    <p className="mt-2 font-semibold">
-                      {withdrawal.user.name}
-                    </p>
+                <div className="p-4 sm:p-6">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        Withdrawal Amount
+                      </p>
 
-                    <p className="text-sm text-gray-400">
-                      {withdrawal.user.email}
-                    </p>
+                      <h2 className="mt-1 text-2xl font-black text-green-500 sm:text-3xl">
+                        $
+                        {Number(withdrawal.amount).toLocaleString(
+                          "en-US",
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }
+                        )}
+                      </h2>
 
-                    <p className="mt-2 text-sm text-gray-500">
-                      {new Date(
-                        withdrawal.createdAt
-                      ).toLocaleString()}
-                    </p>
+                      <p className="mt-4 break-words font-bold text-white">
+                        {withdrawal.user.name}
+                      </p>
+
+                      <p className="mt-1 break-all text-xs text-gray-400 sm:text-sm">
+                        {withdrawal.user.email}
+                      </p>
+
+                      <p className="mt-2 text-xs text-gray-600">
+                        {new Date(
+                          withdrawal.createdAt
+                        ).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <StatusBadge status={withdrawal.status} />
                   </div>
-
-                  <StatusBadge status={withdrawal.status} />
                 </div>
 
-                <div className="mt-8">
-                  <p className="text-sm text-gray-400">
+                {/* METHOD */}
+
+                <div className="border-t border-zinc-800 bg-black/30 p-4 sm:p-6">
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
                     Payout Method
                   </p>
 
-                  <p className="mt-1 text-lg font-semibold">
+                  <p className="mt-2 font-bold">
                     {withdrawal.method === "BANK"
                       ? "Bank Transfer"
                       : "Crypto"}
                   </p>
+
+                  {withdrawal.method === "BANK" && (
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <Info
+                        title="Account Name"
+                        value={withdrawal.accountName || "—"}
+                      />
+
+                      <Info
+                        title="Account Number"
+                        value={withdrawal.accountNumber || "—"}
+                      />
+
+                      <Info
+                        title="Bank"
+                        value={withdrawal.bankName || "—"}
+                      />
+                    </div>
+                  )}
+
+                  {withdrawal.method === "CRYPTO" && (
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      <Info
+                        title="Network"
+                        value={withdrawal.cryptoNetwork || "—"}
+                      />
+
+                      <Info
+                        title="Wallet Address"
+                        value={withdrawal.walletAddress || "—"}
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {withdrawal.method === "BANK" && (
-                  <div className="mt-6 grid gap-4 md:grid-cols-3">
-                    <Info
-                      title="Account Name"
-                      value={withdrawal.accountName || "-"}
-                    />
-
-                    <Info
-                      title="Account Number"
-                      value={withdrawal.accountNumber || "-"}
-                    />
-
-                    <Info
-                      title="Bank"
-                      value={withdrawal.bankName || "-"}
-                    />
-                  </div>
-                )}
-
-                {withdrawal.method === "CRYPTO" && (
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
-                    <Info
-                      title="Network"
-                      value={withdrawal.cryptoNetwork || "-"}
-                    />
-
-                    <Info
-                      title="Wallet Address"
-                      value={withdrawal.walletAddress || "-"}
-                    />
-                  </div>
-                )}
+                {/* ADMIN NOTE */}
 
                 {withdrawal.adminNote && (
-                  <div className="mt-6 rounded-xl bg-gray-800 p-5">
-                    <p className="text-sm text-gray-400">
-                      Admin Note
-                    </p>
+                  <div className="border-t border-zinc-800 p-4 sm:p-6">
+                    <div className="rounded-xl border border-zinc-700 bg-black p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        Admin Note
+                      </p>
 
-                    <p className="mt-2">
-                      {withdrawal.adminNote}
-                    </p>
+                      <p className="mt-2 break-words text-sm leading-6 text-gray-300">
+                        {withdrawal.adminNote}
+                      </p>
+                    </div>
                   </div>
                 )}
 
+                {/* ACTIONS */}
+
                 {withdrawal.status === "PENDING" && (
-                  <div className="mt-8 flex flex-wrap gap-4">
+                  <div className="grid gap-3 border-t border-zinc-800 p-4 sm:flex sm:p-6">
                     <button
+                      type="button"
                       disabled={updatingId === withdrawal.id}
                       onClick={() =>
                         updateStatus(
@@ -249,12 +314,15 @@ export default function AdminWithdrawalsPage() {
                           "APPROVED"
                         )
                       }
-                      className="rounded-xl bg-green-500 px-6 py-3 font-bold text-black disabled:opacity-50"
+                      className="w-full rounded-xl bg-green-500 px-6 py-3 font-bold text-black transition hover:bg-green-400 disabled:opacity-50 sm:w-auto"
                     >
-                      Approve
+                      {updatingId === withdrawal.id
+                        ? "Processing..."
+                        : "Approve"}
                     </button>
 
                     <button
+                      type="button"
                       disabled={updatingId === withdrawal.id}
                       onClick={() =>
                         updateStatus(
@@ -262,7 +330,7 @@ export default function AdminWithdrawalsPage() {
                           "REJECTED"
                         )
                       }
-                      className="rounded-xl bg-red-500 px-6 py-3 font-bold text-white disabled:opacity-50"
+                      className="w-full rounded-xl border border-red-500/40 bg-red-500/10 px-6 py-3 font-bold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50 sm:w-auto"
                     >
                       Reject
                     </button>
@@ -270,8 +338,9 @@ export default function AdminWithdrawalsPage() {
                 )}
 
                 {withdrawal.status === "APPROVED" && (
-                  <div className="mt-8">
+                  <div className="border-t border-zinc-800 p-4 sm:p-6">
                     <button
+                      type="button"
                       disabled={updatingId === withdrawal.id}
                       onClick={() =>
                         updateStatus(
@@ -279,7 +348,7 @@ export default function AdminWithdrawalsPage() {
                           "PAID"
                         )
                       }
-                      className="rounded-xl bg-purple-500 px-6 py-3 font-bold text-white disabled:opacity-50"
+                      className="w-full rounded-xl bg-purple-500 px-6 py-3 font-bold text-white transition hover:bg-purple-400 disabled:opacity-50 sm:w-auto"
                     >
                       {updatingId === withdrawal.id
                         ? "Processing..."
@@ -287,12 +356,32 @@ export default function AdminWithdrawalsPage() {
                     </button>
                   </div>
                 )}
-              </div>
+              </article>
             ))}
           </div>
         )}
-      </div>
-    </main>
+      </section>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
+      <p className="text-xs text-gray-500 sm:text-sm">
+        {label}
+      </p>
+
+      <p className="mt-2 text-2xl font-black sm:text-3xl">
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -304,12 +393,12 @@ function Info({
   value: string;
 }) {
   return (
-    <div className="rounded-xl bg-gray-800 p-4">
-      <p className="text-sm text-gray-400">
+    <div className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+      <p className="text-xs text-gray-500">
         {title}
       </p>
 
-      <p className="mt-1 break-all font-semibold">
+      <p className="mt-2 break-all text-sm font-semibold text-white">
         {value}
       </p>
     </div>
@@ -321,33 +410,20 @@ function StatusBadge({
 }: {
   status: string;
 }) {
-  if (status === "APPROVED") {
-    return (
-      <span className="rounded-full bg-green-500/20 px-4 py-2 text-sm font-bold text-green-400">
-        🟢 Approved
-      </span>
-    );
-  }
-
-  if (status === "REJECTED") {
-    return (
-      <span className="rounded-full bg-red-500/20 px-4 py-2 text-sm font-bold text-red-400">
-        🔴 Rejected
-      </span>
-    );
-  }
-
-  if (status === "PAID") {
-    return (
-      <span className="rounded-full bg-purple-500/20 px-4 py-2 text-sm font-bold text-purple-400">
-        🟣 Paid
-      </span>
-    );
-  }
+  const styles: Record<string, string> = {
+    PENDING: "bg-yellow-500/10 text-yellow-400",
+    APPROVED: "bg-green-500/10 text-green-400",
+    REJECTED: "bg-red-500/10 text-red-400",
+    PAID: "bg-purple-500/10 text-purple-400",
+  };
 
   return (
-    <span className="rounded-full bg-yellow-500/20 px-4 py-2 text-sm font-bold text-yellow-400">
-      🟡 Pending
+    <span
+      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold sm:px-3 sm:text-xs ${
+        styles[status] || "bg-zinc-800 text-gray-300"
+      }`}
+    >
+      {status}
     </span>
   );
 }
