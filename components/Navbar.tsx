@@ -58,6 +58,13 @@ export default function Navbar() {
             Dashboard
           </Link>
 
+<Link
+  href="/signup"
+  className="text-sm font-medium text-gray-300 transition hover:text-green-500"
+>
+  Sign Up
+</Link>
+
           <Link
             href="/login"
             className="text-sm font-medium text-gray-300 transition hover:text-green-500"
