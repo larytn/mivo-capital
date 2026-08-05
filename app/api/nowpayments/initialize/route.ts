@@ -4,9 +4,7 @@ import { verifyToken } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
-    /*
-     * AUTHENTICATION
-     */
+    // AUTHENTICATION
     const token = request.cookies.get("token")?.value;
 
     if (!token) {
@@ -28,31 +26,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /*
-     * CHECK API KEY
-     */
-    const apiKey =
-      process.env.NOWPAYMENTS_API_KEY;
+    // NOWPAYMENTS API KEY
+    const apiKey = process.env.NOWPAYMENTS_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
         {
-          error:
-            "NOWPayments API key is not configured.",
+          error: "NOWPayments API key is not configured.",
         },
         { status: 500 }
       );
     }
 
-    /*
-     * ORDER DATA
-     */
+    // REQUEST DATA
     const {
       accountSize,
       challengeType,
       amount,
       promoCode,
     } = await request.json();
+
+    if (
+      accountSize === undefined ||
+      accountSize === null
+    ) {
+      return NextResponse.json(
+        { error: "Account size is required." },
+        { status: 400 }
+      );
+    }
+
+    if (!challengeType) {
+      return NextResponse.json(
+        { error: "Challenge type is required." },
+        { status: 400 }
+      );
+    }
+
+    /*
+     * Convert values to the types required
+     * by the Payment Prisma model.
+     */
+    const normalizedAccountSize =
+      String(accountSize);
+
+    const normalizedChallengeType =
+      String(challengeType);
 
     let finalAmount = Number(amount);
 
@@ -66,9 +85,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /*
-     * VALIDATE PROMO
-     */
+    // VALIDATE PROMO
     let normalizedPromo: string | null = null;
 
     if (promoCode) {
@@ -76,14 +93,12 @@ export async function POST(request: NextRequest) {
         .trim()
         .toUpperCase();
 
-      const promos =
-        await prisma.promoCode.findMany();
-
-      const promo = promos.find(
-        (item) =>
-          item.code.trim().toUpperCase() ===
-          normalizedPromo
-      );
+      const promo =
+        await prisma.promoCode.findUnique({
+          where: {
+            code: normalizedPromo,
+          },
+        });
 
       if (!promo) {
         return NextResponse.json(
@@ -115,28 +130,28 @@ export async function POST(request: NextRequest) {
       ) {
         return NextResponse.json(
           {
-            error:
-              "Promo code usage limit reached.",
+            error: "Promo code usage limit reached.",
           },
           { status: 400 }
         );
       }
     }
 
-    /*
-     * CREATE MIVO ORDER REFERENCE
-     */
-    const txRef = `MIVO-CRYPTO-${Date.now()}-${Math.floor(
-      Math.random() * 100000
-    )}`;
+    // ROUND PAYMENT AMOUNT
+    finalAmount =
+      Math.round(finalAmount * 100) / 100;
 
-    /*
-     * CREATE NOWPAYMENTS INVOICE
-     */
+    // UNIQUE PAYMENT REFERENCE
+    const txRef =
+      `MIVO-CRYPTO-${Date.now()}-${Math.floor(
+        Math.random() * 100000
+      )}`;
+
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       "http://localhost:3000";
 
+    // CREATE NOWPAYMENTS INVOICE
     const nowResponse = await fetch(
       "https://api.nowpayments.io/v1/invoice",
       {
@@ -153,13 +168,18 @@ export async function POST(request: NextRequest) {
 
           order_id: txRef,
 
-          order_description: `${accountSize} ${challengeType}`,
+          order_description:
+            `${normalizedAccountSize} ${normalizedChallengeType}`,
 
-          success_url: `${appUrl}/payment/success?provider=nowpayments`,
+         success_url: `${appUrl}/payment/success?provider=nowpayments&tx_ref=${encodeURIComponent(
+  txRef
+)}`,
 
-          cancel_url: `${appUrl}/buy-challenge`,
+          cancel_url:
+            `${appUrl}/challenges`,
 
-          ipn_callback_url: `${appUrl}/api/nowpayments/webhook`,
+          ipn_callback_url:
+            `${appUrl}/api/nowpayments/webhook`,
         }),
       }
     );
@@ -182,16 +202,13 @@ export async function POST(request: NextRequest) {
             "Unable to create crypto payment.",
         },
         {
-          status:
-            nowResponse.status || 500,
+          status: nowResponse.status || 500,
         }
       );
     }
 
-    /*
-     * SAVE PENDING PAYMENT
-     */
-    await prisma.payment.create({
+    // SAVE PENDING PAYMENT
+    const payment = await prisma.payment.create({
       data: {
         txRef,
 
@@ -199,9 +216,11 @@ export async function POST(request: NextRequest) {
 
         currency: "USD",
 
-        accountSize,
+        accountSize:
+          normalizedAccountSize,
 
-        challengeType,
+        challengeType:
+          normalizedChallengeType,
 
         userId: payload.id,
 
@@ -221,6 +240,8 @@ export async function POST(request: NextRequest) {
       txRef,
 
       amount: finalAmount,
+
+      paymentId: payment.id,
     });
   } catch (error: any) {
     console.error(

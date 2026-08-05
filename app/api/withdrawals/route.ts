@@ -3,12 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 
 function getUserId(request: NextRequest) {
-  const token =
-    request.cookies.get("token")?.value;
+  const token = request.cookies.get("token")?.value;
 
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
   const payload = verifyToken(token) as {
     id: string;
@@ -17,16 +14,9 @@ function getUserId(request: NextRequest) {
   return payload?.id ?? null;
 }
 
-/*
- * GET TRADER WITHDRAWALS
- */
-
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   try {
-    const userId =
-      getUserId(request);
+    const userId = getUserId(request);
 
     if (!userId) {
       return NextResponse.json(
@@ -35,35 +25,31 @@ export async function GET(
       );
     }
 
-    const withdrawals =
-      await prisma.withdrawal.findMany({
-        where: {
-          userId,
-        },
+    const withdrawals = await prisma.withdrawal.findMany({
+      where: {
+        userId,
+      },
 
-        include: {
-          challenge: {
-            select: {
-              id: true,
-              account: true,
-              mt5Login: true,
-            },
+      include: {
+        challenge: {
+          select: {
+            id: true,
+            account: true,
+            mt5Login: true,
           },
         },
+      },
 
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
     return NextResponse.json({
       withdrawals,
     });
   } catch (error: any) {
-    console.error(
-      "Withdrawal GET error:",
-      error
-    );
+    console.error("Withdrawal GET error:", error);
 
     return NextResponse.json(
       {
@@ -76,16 +62,9 @@ export async function GET(
   }
 }
 
-/*
- * CREATE WITHDRAWAL REQUEST
- */
-
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   try {
-    const userId =
-      getUserId(request);
+    const userId = getUserId(request);
 
     if (!userId) {
       return NextResponse.json(
@@ -94,93 +73,77 @@ export async function POST(
       );
     }
 
+    // KYC CHECK
+    const kyc = await prisma.kYC.findUnique({
+      where: {
+        userId,
+      },
+      select: {
+        status: true,
+      },
+    });
+
+    if (!kyc || kyc.status !== "APPROVED") {
+      return NextResponse.json(
+        {
+          error:
+            "KYC verification must be approved before you can request a withdrawal.",
+        },
+        { status: 403 }
+      );
+    }
+
     const {
       challengeId,
       amount,
       method,
-
       accountName,
       accountNumber,
       bankName,
-
       cryptoNetwork,
       walletAddress,
     } = await request.json();
 
-    /*
-     * BASIC VALIDATION
-     */
-
     if (!challengeId) {
       return NextResponse.json(
         {
-          error:
-            "Please select a trading account.",
+          error: "Please select a trading account.",
         },
         { status: 400 }
       );
     }
 
-    const withdrawalAmount =
-      Number(amount);
+    const withdrawalAmount = Number(amount);
 
     if (
-      !Number.isFinite(
-        withdrawalAmount
-      ) ||
+      !Number.isFinite(withdrawalAmount) ||
       withdrawalAmount <= 0
     ) {
       return NextResponse.json(
         {
-          error:
-            "Enter a valid withdrawal amount.",
+          error: "Enter a valid withdrawal amount.",
         },
         { status: 400 }
       );
     }
 
-    /*
-     * FIND TRADING ACCOUNT
-     *
-     * userId is included so a trader
-     * cannot withdraw from another
-     * trader's account.
-     */
-
-    const challenge =
-      await prisma.challenge.findFirst({
-        where: {
-          id: challengeId,
-          userId,
-        },
-      });
+    const challenge = await prisma.challenge.findFirst({
+      where: {
+        id: challengeId,
+        userId,
+      },
+    });
 
     if (!challenge) {
       return NextResponse.json(
         {
-          error:
-            "Trading account not found.",
+          error: "Trading account not found.",
         },
         { status: 404 }
       );
     }
 
-    /*
-     * WITHDRAWAL ELIGIBILITY
-     *
-     * FUNDED is now a STAGE.
-     *
-     * The account must be:
-     *
-     * stage  = FUNDED
-     * status = ACTIVE
-     *
-     * This works for:
-     * ONE_STEP
-     * TWO_STEP
-     * INSTANT
-     */
-
+    // MUST BE ACTIVE + FUNDED
     if (
       challenge.stage !== "FUNDED" ||
       challenge.status !== "ACTIVE"
@@ -194,13 +157,7 @@ export async function POST(
       );
     }
 
-    /*
-     * WITHDRAWABLE PROFIT
-     */
-
-    if (
-      challenge.withdrawableProfit <= 0
-    ) {
+    if (challenge.withdrawableProfit <= 0) {
       return NextResponse.json(
         {
           error:
@@ -210,30 +167,14 @@ export async function POST(
       );
     }
 
-    /*
-     * RESERVED WITHDRAWALS
-     *
-     * Pending and approved withdrawals
-     * are reserved so the trader cannot
-     * submit multiple requests against
-     * the same available profit.
-     *
-     * PAID is not included because paid
-     * withdrawals should already have
-     * been deducted from
-     * withdrawableProfit.
-     */
-
+    // CHECK ALREADY RESERVED WITHDRAWALS
     const existingWithdrawals =
       await prisma.withdrawal.aggregate({
         where: {
           challengeId,
 
           status: {
-            in: [
-              "PENDING",
-              "APPROVED",
-            ],
+            in: ["PENDING", "APPROVED"],
           },
         },
 
@@ -243,57 +184,40 @@ export async function POST(
       });
 
     const alreadyRequested =
-      existingWithdrawals._sum.amount ??
-      0;
+      existingWithdrawals._sum.amount ?? 0;
 
-    const availableToWithdraw =
-      Math.max(
-        0,
-        challenge.withdrawableProfit -
-          alreadyRequested
-      );
+    const availableToWithdraw = Math.max(
+      0,
+      challenge.withdrawableProfit -
+        alreadyRequested
+    );
 
-    if (
-      withdrawalAmount >
-      availableToWithdraw
-    ) {
+    if (withdrawalAmount > availableToWithdraw) {
       return NextResponse.json(
         {
-          error:
-            `You can only withdraw up to $${availableToWithdraw.toLocaleString(
-              "en-US",
-              {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }
-            )}.`,
+          error: `You can only withdraw up to $${availableToWithdraw.toLocaleString(
+            "en-US",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }
+          )}.`,
         },
         { status: 400 }
       );
     }
 
-    /*
-     * PAYOUT METHOD
-     */
-
-    if (
-      !["BANK", "CRYPTO"].includes(
-        method
-      )
-    ) {
+    // PAYOUT METHOD
+    if (!["BANK", "CRYPTO"].includes(method)) {
       return NextResponse.json(
         {
-          error:
-            "Select a valid withdrawal method.",
+          error: "Select a valid withdrawal method.",
         },
         { status: 400 }
       );
     }
 
-    /*
-     * BANK VALIDATION
-     */
-
+    // BANK
     if (method === "BANK") {
       if (
         !accountName ||
@@ -302,23 +226,16 @@ export async function POST(
       ) {
         return NextResponse.json(
           {
-            error:
-              "Complete your bank details.",
+            error: "Complete your bank details.",
           },
           { status: 400 }
         );
       }
     }
 
-    /*
-     * CRYPTO VALIDATION
-     */
-
+    // CRYPTO
     if (method === "CRYPTO") {
-      if (
-        !cryptoNetwork ||
-        !walletAddress
-      ) {
+      if (!cryptoNetwork || !walletAddress) {
         return NextResponse.json(
           {
             error:
@@ -329,18 +246,13 @@ export async function POST(
       }
     }
 
-    /*
-     * CREATE WITHDRAWAL
-     */
-
     const withdrawal =
       await prisma.withdrawal.create({
         data: {
           userId,
           challengeId,
 
-          amount:
-            withdrawalAmount,
+          amount: withdrawalAmount,
 
           method,
 
@@ -386,19 +298,13 @@ export async function POST(
     return NextResponse.json(
       {
         success: true,
-
-        message:
-          "Withdrawal request submitted.",
-
+        message: "Withdrawal request submitted.",
         withdrawal,
       },
       { status: 201 }
     );
   } catch (error: any) {
-    console.error(
-      "Withdrawal POST error:",
-      error
-    );
+    console.error("Withdrawal POST error:", error);
 
     return NextResponse.json(
       {

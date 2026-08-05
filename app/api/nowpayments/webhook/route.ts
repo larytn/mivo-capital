@@ -22,6 +22,9 @@ function sortObject(value: any): any {
 
 export async function POST(request: NextRequest) {
   try {
+    /*
+     * NOWPAYMENTS CONFIG
+     */
     const ipnSecret =
       process.env.NOWPAYMENTS_IPN_SECRET;
 
@@ -30,40 +33,76 @@ export async function POST(request: NextRequest) {
 
     if (!ipnSecret || !apiKey) {
       return NextResponse.json(
-        { error: "NOWPayments is not configured." },
+        {
+          error:
+            "NOWPayments is not configured.",
+        },
         { status: 500 }
       );
     }
 
+    /*
+     * GET SIGNATURE
+     */
     const signature =
-      request.headers.get("x-nowpayments-sig");
+      request.headers.get(
+        "x-nowpayments-sig"
+      );
 
     if (!signature) {
       return NextResponse.json(
-        { error: "Missing signature." },
+        {
+          error: "Missing signature.",
+        },
         { status: 401 }
       );
     }
 
-    const body = await request.json();
+    /*
+     * GET WEBHOOK BODY
+     */
+    const body =
+      await request.json();
 
     /*
      * VERIFY IPN SIGNATURE
      */
-    const expectedSignature = createHmac(
-      "sha512",
-      ipnSecret
-    )
-      .update(
-        JSON.stringify(sortObject(body))
+    const expectedSignature =
+      createHmac(
+        "sha512",
+        ipnSecret
       )
-      .digest("hex");
+        .update(
+          JSON.stringify(
+            sortObject(body)
+          )
+        )
+        .digest("hex");
 
-    const receivedBuffer =
-      Buffer.from(signature, "hex");
+    let receivedBuffer: Buffer;
+    let expectedBuffer: Buffer;
 
-    const expectedBuffer =
-      Buffer.from(expectedSignature, "hex");
+    try {
+      receivedBuffer =
+        Buffer.from(
+          signature,
+          "hex"
+        );
+
+      expectedBuffer =
+        Buffer.from(
+          expectedSignature,
+          "hex"
+        );
+    } catch {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid signature.",
+        },
+        { status: 401 }
+      );
+    }
 
     if (
       receivedBuffer.length !==
@@ -74,65 +113,102 @@ export async function POST(request: NextRequest) {
       )
     ) {
       return NextResponse.json(
-        { error: "Invalid signature." },
+        {
+          error:
+            "Invalid signature.",
+        },
         { status: 401 }
       );
     }
 
+    /*
+     * PAYMENT DATA
+     */
     const {
       payment_id,
       payment_status,
       order_id,
     } = body;
 
-    if (!payment_id || !order_id) {
+    if (
+      !payment_id ||
+      !order_id
+    ) {
       return NextResponse.json(
-        { error: "Missing payment information." },
+        {
+          error:
+            "Missing payment information.",
+        },
         { status: 400 }
       );
     }
 
     /*
-     * IGNORE PAYMENT UPDATES THAT
-     * ARE NOT FINISHED YET
+     * ONLY PROCESS FINISHED PAYMENTS
      */
-    if (payment_status !== "finished") {
+    if (
+      payment_status !==
+      "finished"
+    ) {
       return NextResponse.json({
         status: "ignored",
+        paymentStatus:
+          payment_status,
       });
     }
 
     /*
-     * VERIFY DIRECTLY WITH NOWPAYMENTS
+     * VERIFY PAYMENT DIRECTLY
+     * WITH NOWPAYMENTS
      */
-    const verifyResponse = await fetch(
-      `https://api.nowpayments.io/v1/payment/${payment_id}`,
-      {
-        headers: {
-          "x-api-key": apiKey,
-        },
-      }
-    );
+    const verifyResponse =
+      await fetch(
+        `https://api.nowpayments.io/v1/payment/${payment_id}`,
+        {
+          headers: {
+            "x-api-key":
+              apiKey,
+          },
+          cache: "no-store",
+        }
+      );
 
     const verifyData =
       await verifyResponse.json();
 
     if (
       !verifyResponse.ok ||
-      verifyData.payment_status !== "finished"
+      verifyData.payment_status !==
+        "finished"
     ) {
+      console.error(
+        "NOWPayments verification failed:",
+        verifyData
+      );
+
       return NextResponse.json(
-        { error: "Payment verification failed." },
+        {
+          error:
+            "Payment verification failed.",
+        },
         { status: 400 }
       );
     }
 
+    /*
+     * CONFIRM ORDER REFERENCE
+     */
     if (
-      String(verifyData.order_id) !==
+      String(
+        verifyData.order_id
+      ) !==
       String(order_id)
     ) {
       return NextResponse.json(
-        { error: "Order reference mismatch." },
+        {
+          error:
+            "Order reference mismatch.",
+        },
         { status: 400 }
       );
     }
@@ -143,35 +219,104 @@ export async function POST(request: NextRequest) {
     const payment =
       await prisma.payment.findUnique({
         where: {
-          txRef: String(order_id),
+          txRef:
+            String(order_id),
         },
       });
 
     if (!payment) {
       return NextResponse.json(
-        { error: "Payment not found." },
+        {
+          error:
+            "Payment not found.",
+        },
         { status: 404 }
       );
     }
 
     /*
-     * PREVENT DUPLICATES
+     * PREVENT DUPLICATE
+     * CHALLENGE CREATION
      */
-    if (payment.status === "SUCCESS") {
+    if (
+      payment.status ===
+      "SUCCESS"
+    ) {
       return NextResponse.json({
         status: "success",
+        challengeId:
+          payment.challengeId,
       });
     }
 
     /*
-     * PRODUCT RULES
+     * NORMALIZE CHALLENGE TYPE
+     *
+     * Supports both the new values:
+     *
+     * THREE_STEP
+     * TWO_STEP
+     * ONE_STEP
+     * INSTANT
+     *
+     * and older payment records:
+     *
+     * Three-Step Challenge
+     * Two-Step Challenge
+     * One-Step Challenge
+     * Instant Funding
      */
-    let accountType:
+    let normalizedType:
       | "THREE_STEP"
       | "TWO_STEP"
       | "ONE_STEP"
       | "INSTANT";
 
+    if (
+      payment.challengeType ===
+        "THREE_STEP" ||
+      payment.challengeType ===
+        "Three-Step Challenge"
+    ) {
+      normalizedType =
+        "THREE_STEP";
+    } else if (
+      payment.challengeType ===
+        "TWO_STEP" ||
+      payment.challengeType ===
+        "Two-Step Challenge"
+    ) {
+      normalizedType =
+        "TWO_STEP";
+    } else if (
+      payment.challengeType ===
+        "ONE_STEP" ||
+      payment.challengeType ===
+        "One-Step Challenge"
+    ) {
+      normalizedType =
+        "ONE_STEP";
+    } else if (
+      payment.challengeType ===
+        "INSTANT" ||
+      payment.challengeType ===
+        "Instant Funding"
+    ) {
+      normalizedType =
+        "INSTANT";
+    } else {
+      return NextResponse.json(
+        {
+          error:
+            `Invalid challenge type: ${payment.challengeType}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    /*
+     * PRODUCT RULES
+     */
     let stage:
       | "PHASE_1"
       | "FUNDED";
@@ -182,78 +327,144 @@ export async function POST(request: NextRequest) {
     let minimumTradeDays: number;
 
     if (
-      payment.challengeType ===
-      "Three-Step Challenge"
+      normalizedType ===
+      "THREE_STEP"
     ) {
       const rules =
-        TRADING_RULES.THREE_STEP.PHASE_1;
+        TRADING_RULES
+          .THREE_STEP
+          .PHASE_1;
 
-      accountType = "THREE_STEP";
       stage = "PHASE_1";
 
-      profitTarget = rules.profitTarget;
-      dailyDrawdown = rules.dailyDrawdown;
-      maxDrawdown = rules.maxDrawdown;
+      profitTarget =
+        rules.profitTarget;
+
+      dailyDrawdown =
+        rules.dailyDrawdown;
+
+      maxDrawdown =
+        rules.maxDrawdown;
+
       minimumTradeDays =
         rules.minimumTradingDays;
     } else if (
-      payment.challengeType ===
-      "Two-Step Challenge"
+      normalizedType ===
+      "TWO_STEP"
     ) {
       const rules =
-        TRADING_RULES.TWO_STEP.PHASE_1;
+        TRADING_RULES
+          .TWO_STEP
+          .PHASE_1;
 
-      accountType = "TWO_STEP";
       stage = "PHASE_1";
 
-      profitTarget = rules.profitTarget;
-      dailyDrawdown = rules.dailyDrawdown;
-      maxDrawdown = rules.maxDrawdown;
+      profitTarget =
+        rules.profitTarget;
+
+      dailyDrawdown =
+        rules.dailyDrawdown;
+
+      maxDrawdown =
+        rules.maxDrawdown;
+
       minimumTradeDays =
         rules.minimumTradingDays;
     } else if (
-      payment.challengeType ===
-      "One-Step Challenge"
+      normalizedType ===
+      "ONE_STEP"
     ) {
       const rules =
-        TRADING_RULES.ONE_STEP.PHASE_1;
+        TRADING_RULES
+          .ONE_STEP
+          .PHASE_1;
 
-      accountType = "ONE_STEP";
       stage = "PHASE_1";
 
-      profitTarget = rules.profitTarget;
-      dailyDrawdown = rules.dailyDrawdown;
-      maxDrawdown = rules.maxDrawdown;
-      minimumTradeDays =
-        rules.minimumTradingDays;
-    } else if (
-      payment.challengeType ===
-      "Instant Funding"
-    ) {
-      const rules =
-        TRADING_RULES.INSTANT.FUNDED;
+      profitTarget =
+        rules.profitTarget;
 
-      accountType = "INSTANT";
-      stage = "FUNDED";
+      dailyDrawdown =
+        rules.dailyDrawdown;
 
-      profitTarget = 0;
-      dailyDrawdown = rules.dailyDrawdown;
-      maxDrawdown = rules.maxDrawdown;
+      maxDrawdown =
+        rules.maxDrawdown;
+
       minimumTradeDays =
         rules.minimumTradingDays;
     } else {
-      return NextResponse.json(
-        { error: "Invalid challenge type." },
-        { status: 400 }
-      );
+      const rules =
+        TRADING_RULES
+          .INSTANT
+          .FUNDED;
+
+      stage = "FUNDED";
+
+      profitTarget = 0;
+
+      dailyDrawdown =
+        rules.dailyDrawdown;
+
+      maxDrawdown =
+        rules.maxDrawdown;
+
+      minimumTradeDays =
+        rules.minimumTradingDays;
     }
 
     /*
-     * CREATE CHALLENGE + COMPLETE PAYMENT
+     * CREATE CHALLENGE +
+     * COMPLETE PAYMENT
      */
     const challenge =
       await prisma.$transaction(
         async (tx) => {
+          /*
+           * Re-check payment inside
+           * transaction.
+           */
+          const currentPayment =
+            await tx.payment.findUnique({
+              where: {
+                id: payment.id,
+              },
+            });
+
+          if (!currentPayment) {
+            throw new Error(
+              "Payment disappeared during processing."
+            );
+          }
+
+          /*
+           * Another webhook may have
+           * already processed it.
+           */
+          if (
+            currentPayment.status ===
+              "SUCCESS" &&
+            currentPayment.challengeId
+          ) {
+            const existingChallenge =
+              await tx.challenge.findUnique({
+                where: {
+                  id:
+                    currentPayment.challengeId,
+                },
+              });
+
+            if (!existingChallenge) {
+              throw new Error(
+                "Completed payment challenge could not be found."
+              );
+            }
+
+            return existingChallenge;
+          }
+
+          /*
+           * CREATE TRADING CHALLENGE
+           */
           const createdChallenge =
             await tx.challenge.create({
               data: {
@@ -264,15 +475,22 @@ export async function POST(request: NextRequest) {
                   payment.amount,
 
                 type:
-                  payment.challengeType,
+                  normalizedType,
 
-                accountType,
+                accountType:
+                  normalizedType,
+
                 stage,
-                status: "PENDING",
+
+                status:
+                  "PENDING",
 
                 profitTarget,
+
                 dailyDrawdown,
+
                 maxDrawdown,
+
                 minimumTradeDays,
 
                 userId:
@@ -280,18 +498,26 @@ export async function POST(request: NextRequest) {
               },
             });
 
+          /*
+           * COMPLETE PAYMENT
+           */
           await tx.payment.update({
             where: {
-              id: payment.id,
+              id:
+                payment.id,
             },
 
             data: {
-              status: "SUCCESS",
+              status:
+                "SUCCESS",
 
               nowPaymentsPaymentId:
-                String(payment_id),
+                String(
+                  payment_id
+                ),
 
-              paymentMethod: "CRYPTO",
+              paymentMethod:
+                "CRYPTO",
 
               challengeId:
                 createdChallenge.id,
@@ -301,19 +527,27 @@ export async function POST(request: NextRequest) {
           /*
            * COUNT PROMO USE
            */
-          if (payment.promoCode) {
+          if (
+            payment.promoCode
+          ) {
+            const normalizedPromo =
+              payment.promoCode
+                .trim()
+                .toUpperCase();
+
             const promo =
-              await tx.promoCode.findFirst({
+              await tx.promoCode.findUnique({
                 where: {
                   code:
-                    payment.promoCode,
+                    normalizedPromo,
                 },
               });
 
             if (promo) {
               await tx.promoCode.update({
                 where: {
-                  id: promo.id,
+                  id:
+                    promo.id,
                 },
 
                 data: {
@@ -329,9 +563,28 @@ export async function POST(request: NextRequest) {
         }
       );
 
+    console.log(
+      "NOWPayments payment completed:",
+      {
+        paymentId:
+          payment.id,
+        txRef:
+          payment.txRef,
+        challengeId:
+          challenge.id,
+        accountType:
+          normalizedType,
+      }
+    );
+
     return NextResponse.json({
       status: "success",
-      challengeId: challenge.id,
+
+      paymentId:
+        payment.id,
+
+      challengeId:
+        challenge.id,
     });
   } catch (error: any) {
     console.error(

@@ -13,6 +13,8 @@ type ProgramKey =
   | "ONE_STEP"
   | "INSTANT";
 
+type PaymentMethod = "flutterwave" | "crypto";
+
 type Account = {
   size: string;
   price: number;
@@ -115,7 +117,9 @@ function RuleBox({
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
       <p className="text-xs text-gray-500">{label}</p>
 
-      <p className="mt-2 font-bold text-white">{value}</p>
+      <p className="mt-2 font-bold text-white">
+        {value}
+      </p>
     </div>
   );
 }
@@ -125,6 +129,7 @@ function PhaseRules({
   rules,
 }: {
   title: string;
+
   rules: {
     profitTarget: number;
     dailyDrawdown: number;
@@ -137,7 +142,9 @@ function PhaseRules({
 }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-      <p className="font-bold text-green-500">{title}</p>
+      <p className="font-bold text-green-500">
+        {title}
+      </p>
 
       <div className="mt-5 space-y-4 text-sm">
         <div className="flex justify-between gap-4">
@@ -157,7 +164,9 @@ function PhaseRules({
 
           <span className="text-right font-bold">
             {rules.dailyDrawdown}%{" "}
-            {formatRuleType(rules.dailyDrawdownType)}
+            {formatRuleType(
+              rules.dailyDrawdownType
+            )}
           </span>
         </div>
 
@@ -168,7 +177,9 @@ function PhaseRules({
 
           <span className="text-right font-bold">
             {rules.maxDrawdown}%{" "}
-            {formatRuleType(rules.maxDrawdownType)}
+            {formatRuleType(
+              rules.maxDrawdownType
+            )}
           </span>
         </div>
 
@@ -209,8 +220,14 @@ function ChallengesContent() {
 
   const [loading, setLoading] = useState(false);
 
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>("flutterwave");
+
   // PROMO CODE
-  const [promoInput, setPromoInput] = useState("");
+
+  const [promoInput, setPromoInput] =
+    useState("");
+
   const [appliedPromo, setAppliedPromo] =
     useState<string | null>(null);
 
@@ -250,16 +267,22 @@ function ChallengesContent() {
     }
 
     const accountIndex =
-      programs[validProgram].accounts.findIndex(
-        (item) => item.size === accountParam
+      programs[
+        validProgram
+      ].accounts.findIndex(
+        (item) =>
+          item.size === accountParam
       );
 
     setSelectedAccount(
-      accountIndex >= 0 ? accountIndex : 0
+      accountIndex >= 0
+        ? accountIndex
+        : 0
     );
   }, [searchParams]);
 
-  const program = programs[selectedProgram];
+  const program =
+    programs[selectedProgram];
 
   const account =
     program.accounts[selectedAccount];
@@ -273,31 +296,34 @@ function ChallengesContent() {
 
   const finalPrice =
     Math.round(
-      (account.price - discountAmount) * 100
+      (account.price -
+        discountAmount) *
+        100
     ) / 100;
+
+  function resetPromo() {
+    setPromoInput("");
+    setAppliedPromo(null);
+    setDiscountPercent(0);
+    setPromoMessage("");
+  }
 
   function changeProgram(
     programKey: ProgramKey
   ) {
     setSelectedProgram(programKey);
     setSelectedAccount(0);
-
-    // Reset promo when product changes
-    setPromoInput("");
-    setAppliedPromo(null);
-    setDiscountPercent(0);
-    setPromoMessage("");
+    resetPromo();
   }
 
-  function changeAccount(index: number) {
+  function changeAccount(
+    index: number
+  ) {
     setSelectedAccount(index);
-
-    // Reset promo when account changes
-    setPromoInput("");
-    setAppliedPromo(null);
-    setDiscountPercent(0);
-    setPromoMessage("");
+    resetPromo();
   }
+
+  // APPLY PROMO
 
   async function applyPromo() {
     try {
@@ -305,6 +331,7 @@ function ChallengesContent() {
         setPromoMessage(
           "Enter a promo code first."
         );
+
         return;
       }
 
@@ -327,7 +354,8 @@ function ChallengesContent() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         setAppliedPromo(null);
@@ -342,6 +370,7 @@ function ChallengesContent() {
       }
 
       setAppliedPromo(data.code);
+
       setDiscountPercent(
         Number(data.discountPercent)
       );
@@ -363,7 +392,90 @@ function ChallengesContent() {
     }
   }
 
-  async function handleBuy() {
+  // CRYPTO CHECKOUT
+
+  async function handleCryptoBuy() {
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        "/api/nowpayments/initialize",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            accountSize:
+              account.size,
+
+            challengeType:
+              program.name,
+
+            amount:
+              finalPrice,
+
+            promoCode:
+              appliedPromo || null,
+          }),
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        if (
+          response.status === 401
+        ) {
+          alert(
+            "Please login first."
+          );
+
+          window.location.href =
+            "/login";
+
+          return;
+        }
+
+        alert(
+          data.error ||
+            "Unable to initialize crypto payment."
+        );
+
+        return;
+      }
+
+      if (!data.link) {
+        alert(
+          "Crypto payment link was not returned."
+        );
+
+        return;
+      }
+
+      window.location.href =
+        data.link;
+    } catch (error) {
+      console.error(
+        "CRYPTO PAYMENT ERROR:",
+        error
+      );
+
+      alert(
+        "Something went wrong while starting crypto payment."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // CARD / BANK CHECKOUT
+
+  async function handleCardBuy() {
     try {
       setLoading(true);
 
@@ -378,24 +490,31 @@ function ChallengesContent() {
           },
 
           body: JSON.stringify({
-            accountSize: account.size,
-            challengeType: program.name,
+            accountSize:
+              account.size,
 
-            // IMPORTANT:
-            // Flutterwave receives discounted price
-            amount: finalPrice,
+            challengeType:
+              program.name,
 
-            // Backend still knows which promo was used
-            promoCode: appliedPromo || null,
+            amount:
+              finalPrice,
+
+            promoCode:
+              appliedPromo || null,
           }),
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
-        if (response.status === 401) {
-          alert("Please login first.");
+        if (
+          response.status === 401
+        ) {
+          alert(
+            "Please login first."
+          );
 
           window.location.href =
             "/login";
@@ -419,9 +538,13 @@ function ChallengesContent() {
         return;
       }
 
-      window.location.href = data.link;
+      window.location.href =
+        data.link;
     } catch (error) {
-      console.error(error);
+      console.error(
+        "CARD PAYMENT ERROR:",
+        error
+      );
 
       alert(
         "Something went wrong while starting your payment."
@@ -431,11 +554,25 @@ function ChallengesContent() {
     }
   }
 
+  // MAIN CHECKOUT
+
+  async function handleBuy() {
+    if (
+      paymentMethod === "crypto"
+    ) {
+      await handleCryptoBuy();
+      return;
+    }
+
+    await handleCardBuy();
+  }
+
   return (
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
       {/* HEADER */}
+
       <section className="border-b border-zinc-900">
         <div className="mx-auto max-w-7xl px-6 pb-14 pt-20 text-center">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-green-500">
@@ -456,47 +593,54 @@ function ChallengesContent() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-14">
+
         {/* PROGRAM TABS */}
+
         <div className="grid overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 sm:grid-cols-2 lg:grid-cols-4">
-          {programOrder.map((key) => {
-            const item = programs[key];
+          {programOrder.map(
+            (key) => {
+              const item =
+                programs[key];
 
-            const active =
-              selectedProgram === key;
+              const active =
+                selectedProgram === key;
 
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() =>
-                  changeProgram(key)
-                }
-                className={`px-5 py-5 font-bold transition ${
-                  active
-                    ? "bg-green-500 text-black"
-                    : "text-gray-300 hover:bg-zinc-900"
-                }`}
-              >
-                {item.shortName}
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    changeProgram(key)
+                  }
+                  className={`px-5 py-5 font-bold transition ${
+                    active
+                      ? "bg-green-500 text-black"
+                      : "text-gray-300 hover:bg-zinc-900"
+                  }`}
+                >
+                  {item.shortName}
 
-                {item.popular && (
-                  <span
-                    className={`ml-2 rounded-full px-2 py-1 text-[9px] font-black uppercase ${
-                      active
-                        ? "bg-black text-white"
-                        : "bg-green-500/10 text-green-500"
-                    }`}
-                  >
-                    Popular
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                  {item.popular && (
+                    <span
+                      className={`ml-2 rounded-full px-2 py-1 text-[9px] font-black uppercase ${
+                        active
+                          ? "bg-black text-white"
+                          : "bg-green-500/10 text-green-500"
+                      }`}
+                    >
+                      Popular
+                    </span>
+                  )}
+                </button>
+              );
+            }
+          )}
         </div>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+
           {/* LEFT */}
+
           <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6 md:p-9">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -521,6 +665,7 @@ function ChallengesContent() {
             </p>
 
             {/* ACCOUNT SIZES */}
+
             <div className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {program.accounts.map(
                 (item, index) => (
@@ -528,7 +673,9 @@ function ChallengesContent() {
                     key={item.size}
                     type="button"
                     onClick={() =>
-                      changeAccount(index)
+                      changeAccount(
+                        index
+                      )
                     }
                     className={`rounded-xl border px-4 py-5 font-bold transition ${
                       selectedAccount ===
@@ -544,6 +691,7 @@ function ChallengesContent() {
             </div>
 
             {/* TRADING RULES */}
+
             <div className="mt-10 rounded-2xl border border-zinc-800 bg-black p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -561,7 +709,6 @@ function ChallengesContent() {
                 </span>
               </div>
 
-              {/* THREE STEP */}
               {selectedProgram ===
                 "THREE_STEP" && (
                 <>
@@ -594,16 +741,20 @@ function ChallengesContent() {
                     />
                   </div>
 
-                  <div className="mt-4">
+                  <div className="mt-4 grid gap-4">
                     <RuleBox
                       label="Profit Split"
                       value={`${TRADING_RULES.THREE_STEP.FUNDED.profitSplit}%`}
+                    />
+
+                    <RuleBox
+                      label="Withdrawal"
+                      value={`Every ${TRADING_RULES.THREE_STEP.FUNDED.withdrawalDays} Days`}
                     />
                   </div>
                 </>
               )}
 
-              {/* TWO STEP */}
               {selectedProgram ===
                 "TWO_STEP" && (
                 <>
@@ -627,16 +778,20 @@ function ChallengesContent() {
                     />
                   </div>
 
-                  <div className="mt-4">
+                  <div className="mt-4 grid gap-4">
                     <RuleBox
                       label="Profit Split"
                       value={`${TRADING_RULES.TWO_STEP.FUNDED.profitSplit}%`}
+                    />
+
+                    <RuleBox
+                      label="Withdrawal"
+                      value={`Every ${TRADING_RULES.TWO_STEP.FUNDED.withdrawalDays} Days`}
                     />
                   </div>
                 </>
               )}
 
-              {/* ONE STEP */}
               {selectedProgram ===
                 "ONE_STEP" && (
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -653,10 +808,14 @@ function ChallengesContent() {
                     label="Profit Split"
                     value={`${TRADING_RULES.ONE_STEP.FUNDED.profitSplit}%`}
                   />
+
+                  <RuleBox
+                    label="Withdrawal"
+                    value={`Every ${TRADING_RULES.ONE_STEP.FUNDED.withdrawalDays} Days`}
+                  />
                 </div>
               )}
 
-              {/* INSTANT */}
               {selectedProgram ===
                 "INSTANT" && (
                 <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -710,6 +869,7 @@ function ChallengesContent() {
           </div>
 
           {/* ORDER SUMMARY */}
+
           <div className="h-fit rounded-3xl border border-green-500/20 bg-zinc-950 p-6 md:p-9 lg:sticky lg:top-28">
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-green-500">
               Order Summary
@@ -754,6 +914,7 @@ function ChallengesContent() {
             </div>
 
             {/* PROMO CODE */}
+
             <div className="mt-8 rounded-xl border border-zinc-800 bg-black p-4">
               <p className="text-sm font-bold">
                 Promo Code
@@ -765,8 +926,7 @@ function ChallengesContent() {
                   value={promoInput}
                   onChange={(event) =>
                     setPromoInput(
-                      event.target.value
-                        .toUpperCase()
+                      event.target.value.toUpperCase()
                     )
                   }
                   placeholder="Enter promo code"
@@ -808,6 +968,7 @@ function ChallengesContent() {
             </div>
 
             {/* PRICE SUMMARY */}
+
             <div className="mt-6 rounded-xl border border-zinc-800 bg-black p-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">
@@ -827,7 +988,10 @@ function ChallengesContent() {
                   </span>
 
                   <span className="font-bold text-green-500">
-                    -${discountAmount.toFixed(2)}
+                    -$
+                    {discountAmount.toFixed(
+                      2
+                    )}
                   </span>
                 </div>
               )}
@@ -838,10 +1002,66 @@ function ChallengesContent() {
                 </span>
 
                 <span className="text-xl font-black text-green-500">
-                  ${finalPrice.toFixed(2)}
+                  $
+                  {finalPrice.toFixed(
+                    2
+                  )}
                 </span>
               </div>
             </div>
+
+            {/* PAYMENT METHOD */}
+
+            <div className="mt-6">
+              <p className="mb-3 text-sm font-bold">
+                Payment Method
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPaymentMethod(
+                      "flutterwave"
+                    )
+                  }
+                  className={`rounded-xl border px-4 py-4 text-sm font-bold transition ${
+                    paymentMethod ===
+                    "flutterwave"
+                      ? "border-green-500 bg-green-500 text-black"
+                      : "border-zinc-700 bg-black text-white hover:border-green-500"
+                  }`}
+                >
+                  Card / Bank
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPaymentMethod(
+                      "crypto"
+                    )
+                  }
+                  className={`rounded-xl border px-4 py-4 text-sm font-bold transition ${
+                    paymentMethod ===
+                    "crypto"
+                      ? "border-green-500 bg-green-500 text-black"
+                      : "border-zinc-700 bg-black text-white hover:border-green-500"
+                  }`}
+                >
+                  Crypto
+                </button>
+              </div>
+
+              <p className="mt-3 text-xs text-gray-500">
+                {paymentMethod ===
+                "flutterwave"
+                  ? "Pay securely with card or supported bank payment methods."
+                  : "Pay using cryptocurrency."}
+              </p>
+            </div>
+
+            {/* CHECKOUT */}
 
             <button
               type="button"
@@ -851,35 +1071,48 @@ function ChallengesContent() {
             >
               {loading
                 ? "Preparing Checkout..."
+                : paymentMethod ===
+                  "crypto"
+                ? `Pay with Crypto — $${finalPrice.toFixed(
+                    2
+                  )}`
                 : `Checkout — $${finalPrice.toFixed(
                     2
                   )}`}
             </button>
 
             <p className="mt-4 text-center text-xs leading-5 text-gray-600">
-              By checking out, you confirm that
-              you have reviewed the trading rules
-              applicable to your selected Mivo
-              Capital account.
+              By checking out, you
+              confirm that you have
+              reviewed the trading rules
+              applicable to your selected
+              Mivo Capital account.
             </p>
           </div>
         </div>
 
+        {/* BACK */}
+
         <div className="mt-10 text-center">
           <Link
-            href="/#funding-programs"
+            href="/dashboard"
             className="text-sm text-gray-500 transition hover:text-white"
           >
-            ← Back to Funding Programs
+            ← Back to Dashboard
           </Link>
         </div>
       </section>
     </main>
   );
 }
+
 export default function ChallengesPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black" />
+      }
+    >
       <ChallengesContent />
     </Suspense>
   );

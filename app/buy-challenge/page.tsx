@@ -190,7 +190,63 @@ const applyPromo = async () => {
  const handleBuy = async () => {
   try {
     setLoading(true);
+
+    const response = await fetch(
+      "/api/flutterwave/initialize",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          accountSize: account.size,
+          challengeType: program.name,
+          amount: finalPrice,
+          promoCode: appliedPromo || null,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        alert("Please login first.");
+        window.location.href = "/login";
+        return;
+      }
+
+      alert(
+        data.error ||
+          "Unable to initialize payment."
+      );
+
+      return;
+    }
+
+    if (!data.link) {
+      alert(
+        "Payment link was not returned. Please try again."
+      );
+
+      return;
+    }
+
+    window.location.href = data.link;
+  } catch (error) {
+    console.error(error);
+
+    alert(
+      "Something went wrong while starting your payment."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
 const handleCryptoBuy = async () => {
+  console.log("CRYPTO BUTTON CLICKED");
   try {
     setLoading(true);
 
@@ -224,6 +280,7 @@ const handleCryptoBuy = async () => {
         data.error ||
           "Unable to initialize crypto payment."
       );
+
       return;
     }
 
@@ -231,6 +288,7 @@ const handleCryptoBuy = async () => {
       alert(
         "Crypto payment link was not returned."
       );
+
       return;
     }
 
@@ -241,92 +299,6 @@ const handleCryptoBuy = async () => {
     alert(
       "Something went wrong while starting crypto payment."
     );
-  } finally {
-    setLoading(false);
-  }
-};
-    const response = await fetch(
-      "/api/flutterwave/initialize",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          accountSize: account.size,
-          challengeType: program.name,
-          amount: account.price,
-          promoCode: appliedPromo || null,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(
-        data.error || "Unable to initialize payment."
-      );
-      return;
-    }
-
-    if (!data.link) {
-      alert(
-        "Payment link was not returned. Please try again."
-      );
-      return;
-    }
-
-    window.location.href = data.link;
-  } catch (error) {
-    console.error(error);
-
-    alert(
-      "Something went wrong while starting your payment."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
-const handleCryptoBuy = async () => {
-  try {
-    setLoading(true);
-
-    const response = await fetch(
-      "/api/nowpayments/initialize",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          accountSize: account.size,
-          challengeType: program.name,
-          amount: finalPrice,
-          promoCode: appliedPromo || null,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(
-        data.error ||
-          "Unable to initialize crypto payment."
-      );
-      return;
-    }
-
-    if (!data.link) {
-      alert("Crypto payment link was not returned.");
-      return;
-    }
-
-    window.location.href = data.link;
-  } catch (error) {
-    console.error(error);
-    alert("Something went wrong.");
   } finally {
     setLoading(false);
   }

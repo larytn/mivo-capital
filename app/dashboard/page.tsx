@@ -8,17 +8,14 @@ type Challenge = {
   account: string;
   price: number;
   type: string;
-
   accountType: string;
   stage: string;
   status: string;
-
   startingBalance: number;
   currentBalance: number;
   currentEquity: number;
   profit: number;
   withdrawableProfit: number;
-
   mt5Login: string | null;
 };
 
@@ -49,13 +46,12 @@ function getStage(challenge: Challenge) {
   switch (challenge.stage) {
     case "PHASE_1":
       return "Phase 1";
-
     case "PHASE_2":
       return "Phase 2";
-
+    case "PHASE_3":
+      return "Phase 3";
     case "FUNDED":
       return "Funded";
-
     default:
       return challenge.stage || "Unknown";
   }
@@ -64,16 +60,13 @@ function getStage(challenge: Challenge) {
 function getAccountType(challenge: Challenge) {
   switch (challenge.accountType) {
     case "THREE_STEP":
-  return "Three-Step";
+      return "Three-Step";
     case "ONE_STEP":
       return "One-Step";
-
     case "TWO_STEP":
       return "Two-Step";
-
     case "INSTANT":
       return "Instant Funding";
-
     default:
       return challenge.type;
   }
@@ -85,6 +78,13 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  const [kycStatus, setKycStatus] = useState<string | null>(
+    null
+  );
+
+  const [referralCode, setReferralCode] = useState("");
+  const [totalReferrals, setTotalReferrals] = useState(0);
+
   const fetchChallenges = async () => {
     try {
       setError("");
@@ -93,8 +93,15 @@ export default function DashboardPage() {
         cache: "no-store",
       });
 
+      if (response.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error("Failed to load trading accounts.");
+        throw new Error(
+          "Failed to load trading accounts."
+        );
       }
 
       const data = await response.json();
@@ -113,11 +120,51 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchKYC = async () => {
+    try {
+      const response = await fetch("/api/kyc", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+
+      setKycStatus(data.kyc?.status ?? null);
+    } catch {
+      setKycStatus(null);
+    }
+  };
+
+  const fetchReferrals = async () => {
+    try {
+      const response = await fetch("/api/referrals", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+
+      setReferralCode(data.referralCode || "");
+      setTotalReferrals(data.totalReferrals || 0);
+    } catch (error) {
+      console.error(
+        "Failed to load referral stats:",
+        error
+      );
+    }
+  };
+
   const refreshDashboard = async () => {
     try {
       setRefreshing(true);
 
-      await fetchChallenges();
+      await Promise.all([
+        fetchChallenges(),
+        fetchKYC(),
+        fetchReferrals(),
+      ]);
     } finally {
       setRefreshing(false);
     }
@@ -125,6 +172,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchChallenges();
+    fetchKYC();
+    fetchReferrals();
 
     const interval = setInterval(() => {
       fetchChallenges();
@@ -212,11 +261,11 @@ export default function DashboardPage() {
           </Link>
 
           <Link
-            href="/dashboard"
-            className="block text-gray-300 transition hover:text-green-400"
-          >
-            Accounts
-          </Link>
+  href="/accounts"
+  className="block text-gray-300 transition hover:text-green-400"
+>
+  Accounts
+</Link>
 
           <Link
             href="/withdrawals"
@@ -224,6 +273,34 @@ export default function DashboardPage() {
           >
             Withdrawals
           </Link>
+
+          <Link
+            href="/kyc"
+            className="block text-gray-300 transition hover:text-green-400"
+          >
+            KYC Verification
+          </Link>
+
+          <Link
+            href="/referrals"
+            className="block text-gray-300 transition hover:text-green-400"
+          >
+            Referrals
+          </Link>
+
+          <Link
+            href="/transactions"
+            className="block text-gray-300 transition hover:text-green-400"
+          >
+            Transactions
+          </Link>
+
+<Link
+  href="/support"
+  className="block text-gray-300 transition hover:text-green-400"
+>
+  Support
+</Link>
 
           <Link
             href="/profile"
@@ -268,9 +345,11 @@ export default function DashboardPage() {
             <button
               onClick={refreshDashboard}
               disabled={refreshing}
-              className="rounded-lg bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg bg-green-500 px-5 py-2.5 font-semibold text-black transition hover:bg-green-400 disabled:opacity-60"
             >
-              {refreshing ? "Refreshing..." : "Refresh"}
+              {refreshing
+                ? "Refreshing..."
+                : "Refresh"}
             </button>
           </div>
         </div>
@@ -278,16 +357,8 @@ export default function DashboardPage() {
         {/* ERROR */}
 
         {error && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-            <p className="text-sm text-red-400">{error}</p>
-
-            <button
-              onClick={refreshDashboard}
-              disabled={refreshing}
-              className="text-sm font-semibold text-red-300 hover:text-white"
-            >
-              Try Again
-            </button>
+          <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+            {error}
           </div>
         )}
 
@@ -318,9 +389,121 @@ export default function DashboardPage() {
 
           <SummaryCard
             label="Withdrawable"
-            value={money(statistics.totalWithdrawable)}
-            positive={statistics.totalWithdrawable > 0}
+            value={money(
+              statistics.totalWithdrawable
+            )}
+            positive={
+              statistics.totalWithdrawable > 0
+            }
           />
+        </section>
+
+        {/* ACCOUNT STATUS */}
+
+        <section className="mt-8 grid gap-4 lg:grid-cols-2">
+          {/* KYC */}
+
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm text-gray-500">
+                  KYC Verification
+                </p>
+
+                <h3 className="mt-2 text-xl font-bold">
+                  {kycStatus === "APPROVED"
+                    ? "Identity Verified"
+                    : kycStatus === "PENDING"
+                    ? "Verification In Review"
+                    : kycStatus === "REJECTED"
+                    ? "Verification Required"
+                    : "Verify Your Identity"}
+                </h3>
+
+                <p className="mt-2 text-sm text-gray-400">
+                  Complete verification to access
+                  withdrawals and funded account
+                  features.
+                </p>
+              </div>
+
+              <span
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
+                  kycStatus === "APPROVED"
+                    ? "bg-green-500/10 text-green-400"
+                    : kycStatus === "PENDING"
+                    ? "bg-yellow-500/10 text-yellow-400"
+                    : kycStatus === "REJECTED"
+                    ? "bg-red-500/10 text-red-400"
+                    : "bg-zinc-700 text-gray-300"
+                }`}
+              >
+                {kycStatus === "APPROVED"
+                  ? "Verified"
+                  : kycStatus === "PENDING"
+                  ? "Pending Review"
+                  : kycStatus === "REJECTED"
+                  ? "Rejected"
+                  : "Not Verified"}
+              </span>
+            </div>
+
+            <Link
+              href="/kyc"
+              className="mt-5 inline-block rounded-lg bg-green-500 px-5 py-2.5 font-bold text-black hover:bg-green-400"
+            >
+              {kycStatus === "APPROVED"
+                ? "View KYC"
+                : kycStatus === "PENDING"
+                ? "View Status"
+                : "Complete KYC"}
+            </Link>
+          </div>
+
+          {/* REFERRALS */}
+
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Referral Program
+                </p>
+
+                <h3 className="mt-2 text-xl font-bold">
+                  Invite Traders & Earn
+                </h3>
+              </div>
+
+              <div className="text-right">
+                <p className="text-3xl font-black text-green-400">
+                  {totalReferrals}
+                </p>
+
+                <p className="text-xs text-gray-500">
+                  Referrals
+                </p>
+              </div>
+            </div>
+
+            {referralCode && (
+              <div className="mt-4 rounded-lg bg-black p-3">
+                <p className="text-xs text-gray-500">
+                  Your Referral Code
+                </p>
+
+                <p className="mt-1 font-bold text-green-400">
+                  {referralCode}
+                </p>
+              </div>
+            )}
+
+            <Link
+              href="/referrals"
+              className="mt-5 inline-block rounded-lg border border-zinc-700 px-5 py-2.5 font-bold hover:border-green-500 hover:text-green-400"
+            >
+              View Referrals
+            </Link>
+          </div>
         </section>
 
         {/* FEATURED ACCOUNT */}
@@ -339,7 +522,9 @@ export default function DashboardPage() {
                   </h2>
 
                   <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-gray-300">
-                    {getAccountType(featuredAccount)}
+                    {getAccountType(
+                      featuredAccount
+                    )}
                   </span>
 
                   <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-gray-300">
@@ -348,25 +533,29 @@ export default function DashboardPage() {
 
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      statusStyles[featuredAccount.status] ??
+                      statusStyles[
+                        featuredAccount.status
+                      ] ??
                       "bg-gray-700 text-gray-300"
                     }`}
                   >
-                    {statusMap[featuredAccount.status] ??
-                      featuredAccount.status}
+                    {statusMap[
+                      featuredAccount.status
+                    ] ?? featuredAccount.status}
                   </span>
                 </div>
 
                 {featuredAccount.mt5Login && (
                   <p className="mt-3 text-sm text-gray-500">
-                    MT5 Login: {featuredAccount.mt5Login}
+                    MT5 Login:{" "}
+                    {featuredAccount.mt5Login}
                   </p>
                 )}
               </div>
 
               <Link
                 href={`/dashboard/accounts/${featuredAccount.id}`}
-                className="rounded-lg bg-green-500 px-5 py-2.5 font-bold text-black transition hover:bg-green-400"
+                className="rounded-lg bg-green-500 px-5 py-2.5 font-bold text-black hover:bg-green-400"
               >
                 View Account
               </Link>
@@ -375,12 +564,16 @@ export default function DashboardPage() {
             <div className="grid gap-px bg-zinc-800 sm:grid-cols-2 xl:grid-cols-4">
               <AccountStat
                 label="Balance"
-                value={money(featuredAccount.currentBalance)}
+                value={money(
+                  featuredAccount.currentBalance
+                )}
               />
 
               <AccountStat
                 label="Equity"
-                value={money(featuredAccount.currentEquity)}
+                value={money(
+                  featuredAccount.currentEquity
+                )}
               />
 
               <AccountStat
@@ -390,8 +583,8 @@ export default function DashboardPage() {
                   featuredAccount.profit > 0
                     ? "text-green-400"
                     : featuredAccount.profit < 0
-                      ? "text-red-400"
-                      : ""
+                    ? "text-red-400"
+                    : ""
                 }
               />
 
@@ -401,7 +594,8 @@ export default function DashboardPage() {
                   featuredAccount.withdrawableProfit
                 )}
                 className={
-                  featuredAccount.withdrawableProfit > 0
+                  featuredAccount.withdrawableProfit >
+                  0
                     ? "text-green-400"
                     : ""
                 }
@@ -420,18 +614,20 @@ export default function DashboardPage() {
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Your Mivo evaluation and funded accounts.
+                Your Mivo evaluation and funded
+                accounts.
               </p>
             </div>
 
-            {!loading && challenges.length > 0 && (
-              <span className="text-sm text-gray-500">
-                {challenges.length}{" "}
-                {challenges.length === 1
-                  ? "account"
-                  : "accounts"}
-              </span>
-            )}
+            {!loading &&
+              challenges.length > 0 && (
+                <span className="text-sm text-gray-500">
+                  {challenges.length}{" "}
+                  {challenges.length === 1
+                    ? "account"
+                    : "accounts"}
+                </span>
+              )}
           </div>
 
           {loading ? (
@@ -472,91 +668,94 @@ export default function DashboardPage() {
                     <div></div>
                   </div>
 
-                  {challenges.map((challenge) => {
-                    const profitPositive =
-                      challenge.profit >= 0;
+                  {challenges.map((challenge) => (
+                    <Link
+                      key={challenge.id}
+                      href={`/dashboard/accounts/${challenge.id}`}
+                      className="grid grid-cols-[1.4fr_.8fr_1fr_1fr_1fr_1fr_1fr_50px] items-center gap-4 border-b border-zinc-800 px-6 py-5 transition last:border-b-0 hover:bg-zinc-800/60"
+                    >
+                      <div>
+                        <p className="font-bold">
+                          {challenge.account}
+                        </p>
 
-                    return (
-                      <Link
-                        key={challenge.id}
-                        href={`/dashboard/accounts/${challenge.id}`}
-                        className="grid grid-cols-[1.4fr_.8fr_1fr_1fr_1fr_1fr_1fr_50px] items-center gap-4 border-b border-zinc-800 px-6 py-5 transition last:border-b-0 hover:bg-zinc-800/60"
-                      >
-                        <div>
-                          <p className="font-bold">
-                            {challenge.account}
-                          </p>
-
-                          <p className="mt-1 text-xs text-gray-500">
-                            {challenge.type}
-                          </p>
-
-                          {challenge.mt5Login && (
-                            <p className="mt-1 text-xs text-gray-600">
-                              MT5 {challenge.mt5Login}
-                            </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {getAccountType(
+                            challenge
                           )}
-                        </div>
+                        </p>
 
-                        <div>
-                          <span className="inline-flex rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-gray-300">
-                            {getStage(challenge)}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              statusStyles[challenge.status] ??
-                              "bg-gray-700 text-gray-300"
-                            }`}
-                          >
-                            {statusMap[challenge.status] ??
-                              challenge.status}
-                          </span>
-                        </div>
-
-                        <div>
-                          <p className="font-semibold">
-                            {money(challenge.currentBalance)}
+                        {challenge.mt5Login && (
+                          <p className="mt-1 text-xs text-gray-600">
+                            MT5{" "}
+                            {challenge.mt5Login}
                           </p>
+                        )}
+                      </div>
 
-                          <p className="mt-1 text-xs text-gray-500">
-                            Start{" "}
-                            {money(challenge.startingBalance)}
-                          </p>
-                        </div>
+                      <div>
+                        <span className="inline-flex rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-gray-300">
+                          {getStage(challenge)}
+                        </span>
+                      </div>
 
-                        <div className="font-semibold">
-                          {money(challenge.currentEquity)}
-                        </div>
-
-                        <div
-                          className={`font-semibold ${
-                            profitPositive
-                              ? "text-green-400"
-                              : "text-red-400"
+                      <div>
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            statusStyles[
+                              challenge.status
+                            ] ??
+                            "bg-gray-700 text-gray-300"
                           }`}
                         >
-                          {profitPositive &&
-                          challenge.profit > 0
-                            ? "+"
-                            : ""}
-                          {money(challenge.profit)}
-                        </div>
+                          {statusMap[
+                            challenge.status
+                          ] ?? challenge.status}
+                        </span>
+                      </div>
 
-                        <div className="font-semibold text-green-400">
+                      <div>
+                        <p className="font-semibold">
                           {money(
-                            challenge.withdrawableProfit
+                            challenge.currentBalance
                           )}
-                        </div>
+                        </p>
 
-                        <div className="text-right text-xl text-gray-500">
-                          →
-                        </div>
-                      </Link>
-                    );
-                  })}
+                        <p className="mt-1 text-xs text-gray-500">
+                          Start{" "}
+                          {money(
+                            challenge.startingBalance
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="font-semibold">
+                        {money(
+                          challenge.currentEquity
+                        )}
+                      </div>
+
+                      <div
+                        className={`font-semibold ${
+                          challenge.profit >= 0
+                            ? "text-green-400"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {money(challenge.profit)}
+                      </div>
+
+                      <div className="font-semibold text-green-400">
+                        {money(
+                          challenge.withdrawableProfit
+                        )}
+                      </div>
+
+                      <div className="text-right text-xl text-gray-500">
+                        →
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
 
@@ -567,7 +766,7 @@ export default function DashboardPage() {
                   <Link
                     key={challenge.id}
                     href={`/dashboard/accounts/${challenge.id}`}
-                    className="block p-5 transition hover:bg-zinc-800/60"
+                    className="block p-5"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -576,7 +775,9 @@ export default function DashboardPage() {
                         </p>
 
                         <p className="mt-1 text-sm text-gray-500">
-                          {challenge.type}
+                          {getAccountType(
+                            challenge
+                          )}
                         </p>
 
                         <p className="mt-2 text-xs font-semibold text-gray-300">
@@ -586,12 +787,15 @@ export default function DashboardPage() {
 
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          statusStyles[challenge.status] ??
+                          statusStyles[
+                            challenge.status
+                          ] ??
                           "bg-gray-700 text-gray-300"
                         }`}
                       >
-                        {statusMap[challenge.status] ??
-                          challenge.status}
+                        {statusMap[
+                          challenge.status
+                        ] ?? challenge.status}
                       </span>
                     </div>
 
@@ -612,7 +816,9 @@ export default function DashboardPage() {
 
                       <MobileStat
                         label="Profit"
-                        value={money(challenge.profit)}
+                        value={money(
+                          challenge.profit
+                        )}
                         className={
                           challenge.profit >= 0
                             ? "text-green-400"
@@ -652,15 +858,17 @@ function SummaryCard({
 }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-      <p className="text-sm text-gray-500">{label}</p>
+      <p className="text-sm text-gray-500">
+        {label}
+      </p>
 
       <p
         className={`mt-2 text-2xl font-bold ${
           positive
             ? "text-green-400"
             : negative
-              ? "text-red-400"
-              : "text-white"
+            ? "text-red-400"
+            : "text-white"
         }`}
       >
         {value}
@@ -680,9 +888,13 @@ function AccountStat({
 }) {
   return (
     <div className="bg-zinc-900 p-6">
-      <p className="text-sm text-gray-500">{label}</p>
+      <p className="text-sm text-gray-500">
+        {label}
+      </p>
 
-      <p className={`mt-2 text-xl font-bold ${className}`}>
+      <p
+        className={`mt-2 text-xl font-bold ${className}`}
+      >
         {value}
       </p>
     </div>
@@ -700,9 +912,13 @@ function MobileStat({
 }) {
   return (
     <div>
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-gray-500">
+        {label}
+      </p>
 
-      <p className={`mt-1 font-semibold ${className}`}>
+      <p
+        className={`mt-1 font-semibold ${className}`}
+      >
         {value}
       </p>
     </div>
