@@ -34,7 +34,6 @@ const programs: Record<ProgramKey, Program> = {
     shortName: "Three-Step",
     description:
       "Complete three evaluation phases with lower profit targets before progressing to a Mivo funded account.",
-
     accounts: [
       { size: "$2,500", price: 19 },
       { size: "$5,000", price: 29 },
@@ -51,7 +50,6 @@ const programs: Record<ProgramKey, Program> = {
     description:
       "Our flagship evaluation program with balanced profit targets, strong risk parameters and competitive pricing.",
     popular: true,
-
     accounts: [
       { size: "$2,500", price: 29 },
       { size: "$5,000", price: 49 },
@@ -67,7 +65,6 @@ const programs: Record<ProgramKey, Program> = {
     shortName: "One-Step",
     description:
       "Complete one evaluation phase and take the faster route toward a Mivo funded account.",
-
     accounts: [
       { size: "$2,500", price: 39 },
       { size: "$5,000", price: 59 },
@@ -83,7 +80,6 @@ const programs: Record<ProgramKey, Program> = {
     shortName: "Instant",
     description:
       "Skip the evaluation phases and start directly with a funded-stage account.",
-
     accounts: [
       { size: "$2,500", price: 24 },
       { size: "$5,000", price: 39 },
@@ -114,10 +110,12 @@ function RuleBox({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-      <p className="text-xs text-gray-500">{label}</p>
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3.5 sm:p-4">
+      <p className="text-[11px] text-gray-500 sm:text-xs">
+        {label}
+      </p>
 
-      <p className="mt-2 font-bold text-white">
+      <p className="mt-1.5 text-sm font-bold text-white sm:mt-2 sm:text-base">
         {value}
       </p>
     </div>
@@ -129,7 +127,6 @@ function PhaseRules({
   rules,
 }: {
   title: string;
-
   rules: {
     profitTarget: number;
     dailyDrawdown: number;
@@ -141,64 +138,49 @@ function PhaseRules({
   };
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-      <p className="font-bold text-green-500">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 sm:p-5">
+      <p className="text-sm font-bold text-green-500 sm:text-base">
         {title}
       </p>
 
-      <div className="mt-5 space-y-4 text-sm">
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500">
-            Profit Target
-          </span>
-
+      <div className="mt-4 space-y-3 text-xs sm:mt-5 sm:space-y-4 sm:text-sm">
+        <div className="flex justify-between gap-3">
+          <span className="text-gray-500">Profit Target</span>
           <span className="font-bold">
             {rules.profitTarget}%
           </span>
         </div>
 
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500">
-            Daily Drawdown
-          </span>
-
+        <div className="flex justify-between gap-3">
+          <span className="text-gray-500">Daily Drawdown</span>
           <span className="text-right font-bold">
             {rules.dailyDrawdown}%{" "}
-            {formatRuleType(
-              rules.dailyDrawdownType
-            )}
+            {formatRuleType(rules.dailyDrawdownType)}
           </span>
         </div>
 
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-500">
-            Maximum Drawdown
-          </span>
-
+        <div className="flex justify-between gap-3">
+          <span className="text-gray-500">Maximum Drawdown</span>
           <span className="text-right font-bold">
             {rules.maxDrawdown}%{" "}
-            {formatRuleType(
-              rules.maxDrawdownType
-            )}
+            {formatRuleType(rules.maxDrawdownType)}
           </span>
         </div>
 
-        <div className="flex justify-between gap-4">
+        <div className="flex justify-between gap-3">
           <span className="text-gray-500">
             Minimum Trading Days
           </span>
-
           <span className="font-bold">
             {rules.minimumTradingDays} Days
           </span>
         </div>
 
         {rules.consistencyRule !== null && (
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-between gap-3">
             <span className="text-gray-500">
               Consistency Rule
             </span>
-
             <span className="font-bold">
               {rules.consistencyRule}%
             </span>
@@ -214,50 +196,31 @@ function ChallengesContent() {
 
   const [selectedProgram, setSelectedProgram] =
     useState<ProgramKey>("TWO_STEP");
-
-  const [selectedAccount, setSelectedAccount] =
-    useState(0);
-
+  const [selectedAccount, setSelectedAccount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>("flutterwave");
 
-  // PROMO CODE
-
-  const [promoInput, setPromoInput] =
-    useState("");
-
+  const [promoInput, setPromoInput] = useState("");
   const [appliedPromo, setAppliedPromo] =
     useState<string | null>(null);
-
-  const [discountPercent, setDiscountPercent] =
-    useState(0);
-
-  const [promoMessage, setPromoMessage] =
-    useState("");
-
-  const [promoLoading, setPromoLoading] =
-    useState(false);
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [promoMessage, setPromoMessage] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
 
   useEffect(() => {
-    const programParam =
-      searchParams.get("program");
-
-    const accountParam =
-      searchParams.get("account");
+    const programParam = searchParams.get("program");
+    const accountParam = searchParams.get("account");
 
     if (
       !programParam ||
-      !programOrder.includes(
-        programParam as ProgramKey
-      )
+      !programOrder.includes(programParam as ProgramKey)
     ) {
       return;
     }
 
-    const validProgram =
-      programParam as ProgramKey;
+    const validProgram = programParam as ProgramKey;
 
     setSelectedProgram(validProgram);
 
@@ -267,39 +230,23 @@ function ChallengesContent() {
     }
 
     const accountIndex =
-      programs[
-        validProgram
-      ].accounts.findIndex(
-        (item) =>
-          item.size === accountParam
+      programs[validProgram].accounts.findIndex(
+        (item) => item.size === accountParam
       );
 
-    setSelectedAccount(
-      accountIndex >= 0
-        ? accountIndex
-        : 0
-    );
+    setSelectedAccount(accountIndex >= 0 ? accountIndex : 0);
   }, [searchParams]);
 
-  const program =
-    programs[selectedProgram];
-
-  const account =
-    program.accounts[selectedAccount];
+  const program = programs[selectedProgram];
+  const account = program.accounts[selectedAccount];
 
   const discountAmount =
     Math.round(
-      account.price *
-        (discountPercent / 100) *
-        100
+      account.price * (discountPercent / 100) * 100
     ) / 100;
 
   const finalPrice =
-    Math.round(
-      (account.price -
-        discountAmount) *
-        100
-    ) / 100;
+    Math.round((account.price - discountAmount) * 100) / 100;
 
   function resetPromo() {
     setPromoInput("");
@@ -308,72 +255,48 @@ function ChallengesContent() {
     setPromoMessage("");
   }
 
-  function changeProgram(
-    programKey: ProgramKey
-  ) {
+  function changeProgram(programKey: ProgramKey) {
     setSelectedProgram(programKey);
     setSelectedAccount(0);
     resetPromo();
   }
 
-  function changeAccount(
-    index: number
-  ) {
+  function changeAccount(index: number) {
     setSelectedAccount(index);
     resetPromo();
   }
 
-  // APPLY PROMO
-
   async function applyPromo() {
     try {
       if (!promoInput.trim()) {
-        setPromoMessage(
-          "Enter a promo code first."
-        );
-
+        setPromoMessage("Enter a promo code first.");
         return;
       }
 
       setPromoLoading(true);
       setPromoMessage("");
 
-      const response = await fetch(
-        "/api/promo/validate",
-        {
-          method: "POST",
+      const response = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code: promoInput,
+        }),
+      });
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            code: promoInput,
-          }),
-        }
-      );
-
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         setAppliedPromo(null);
         setDiscountPercent(0);
-
-        setPromoMessage(
-          data.error ||
-            "Invalid promo code."
-        );
-
+        setPromoMessage(data.error || "Invalid promo code.");
         return;
       }
 
       setAppliedPromo(data.code);
-
-      setDiscountPercent(
-        Number(data.discountPercent)
-      );
+      setDiscountPercent(Number(data.discountPercent));
 
       setPromoMessage(
         `${data.code} applied — ${data.discountPercent}% off`
@@ -383,16 +306,11 @@ function ChallengesContent() {
 
       setAppliedPromo(null);
       setDiscountPercent(0);
-
-      setPromoMessage(
-        "Unable to apply promo code."
-      );
+      setPromoMessage("Unable to apply promo code.");
     } finally {
       setPromoLoading(false);
     }
   }
-
-  // CRYPTO CHECKOUT
 
   async function handleCryptoBuy() {
     try {
@@ -402,42 +320,24 @@ function ChallengesContent() {
         "/api/nowpayments/initialize",
         {
           method: "POST",
-
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
-            accountSize:
-              account.size,
-
-            challengeType:
-              program.name,
-
-            amount:
-              finalPrice,
-
-            promoCode:
-              appliedPromo || null,
+            accountSize: account.size,
+            challengeType: program.name,
+            amount: finalPrice,
+            promoCode: appliedPromo || null,
           }),
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        if (
-          response.status === 401
-        ) {
-          alert(
-            "Please login first."
-          );
-
-          window.location.href =
-            "/login";
-
+        if (response.status === 401) {
+          alert("Please login first.");
+          window.location.href = "/login";
           return;
         }
 
@@ -445,25 +345,17 @@ function ChallengesContent() {
           data.error ||
             "Unable to initialize crypto payment."
         );
-
         return;
       }
 
       if (!data.link) {
-        alert(
-          "Crypto payment link was not returned."
-        );
-
+        alert("Crypto payment link was not returned.");
         return;
       }
 
-      window.location.href =
-        data.link;
+      window.location.href = data.link;
     } catch (error) {
-      console.error(
-        "CRYPTO PAYMENT ERROR:",
-        error
-      );
+      console.error("CRYPTO PAYMENT ERROR:", error);
 
       alert(
         "Something went wrong while starting crypto payment."
@@ -473,8 +365,6 @@ function ChallengesContent() {
     }
   }
 
-  // CARD / BANK CHECKOUT
-
   async function handleCardBuy() {
     try {
       setLoading(true);
@@ -483,68 +373,39 @@ function ChallengesContent() {
         "/api/flutterwave/initialize",
         {
           method: "POST",
-
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
-            accountSize:
-              account.size,
-
-            challengeType:
-              program.name,
-
-            amount:
-              finalPrice,
-
-            promoCode:
-              appliedPromo || null,
+            accountSize: account.size,
+            challengeType: program.name,
+            amount: finalPrice,
+            promoCode: appliedPromo || null,
           }),
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        if (
-          response.status === 401
-        ) {
-          alert(
-            "Please login first."
-          );
-
-          window.location.href =
-            "/login";
-
+        if (response.status === 401) {
+          alert("Please login first.");
+          window.location.href = "/login";
           return;
         }
 
-        alert(
-          data.error ||
-            "Unable to initialize payment."
-        );
-
+        alert(data.error || "Unable to initialize payment.");
         return;
       }
 
       if (!data.link) {
-        alert(
-          "Payment link was not returned."
-        );
-
+        alert("Payment link was not returned.");
         return;
       }
 
-      window.location.href =
-        data.link;
+      window.location.href = data.link;
     } catch (error) {
-      console.error(
-        "CARD PAYMENT ERROR:",
-        error
-      );
+      console.error("CARD PAYMENT ERROR:", error);
 
       alert(
         "Something went wrong while starting your payment."
@@ -554,12 +415,8 @@ function ChallengesContent() {
     }
   }
 
-  // MAIN CHECKOUT
-
   async function handleBuy() {
-    if (
-      paymentMethod === "crypto"
-    ) {
+    if (paymentMethod === "crypto") {
       await handleCryptoBuy();
       return;
     }
@@ -571,177 +428,141 @@ function ChallengesContent() {
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
-      {/* HEADER */}
-
+      {/* MOBILE-FRIENDLY HEADER */}
       <section className="border-b border-zinc-900">
-        <div className="mx-auto max-w-7xl px-6 pb-14 pt-20 text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-green-500">
+        <div className="mx-auto max-w-7xl px-4 py-8 text-center sm:px-6 sm:py-14 lg:py-16">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-green-500 sm:text-sm">
             Mivo Capital
           </p>
 
-          <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl md:text-6xl">
+          <h1 className="mx-auto mt-3 max-w-3xl text-3xl font-black leading-tight tracking-tight sm:mt-4 sm:text-5xl lg:text-6xl">
             Choose Your Trading Account
           </h1>
 
-          <p className="mx-auto mt-5 max-w-2xl leading-7 text-gray-400">
-            Select your funding program,
-            account size and review the
-            applicable trading rules before
-            checkout.
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-400 sm:mt-5 sm:text-base sm:leading-7">
+            Choose a funding program, select your account size
+            and checkout.
           </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-14">
-
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:py-14">
         {/* PROGRAM TABS */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-0 sm:overflow-hidden sm:rounded-2xl sm:border sm:border-zinc-800 sm:bg-zinc-950">
+          {programOrder.map((key) => {
+            const item = programs[key];
+            const active = selectedProgram === key;
 
-        <div className="grid overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 sm:grid-cols-2 lg:grid-cols-4">
-          {programOrder.map(
-            (key) => {
-              const item =
-                programs[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => changeProgram(key)}
+                className={`relative min-h-[52px] rounded-xl border px-2 py-3 text-xs font-bold transition sm:min-h-[64px] sm:rounded-none sm:border-0 sm:px-5 sm:py-5 sm:text-sm ${
+                  active
+                    ? "border-green-500 bg-green-500 text-black"
+                    : "border-zinc-800 bg-zinc-950 text-gray-300 hover:border-green-500"
+                }`}
+              >
+                {item.shortName}
 
-              const active =
-                selectedProgram === key;
-
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() =>
-                    changeProgram(key)
-                  }
-                  className={`px-5 py-5 font-bold transition ${
-                    active
-                      ? "bg-green-500 text-black"
-                      : "text-gray-300 hover:bg-zinc-900"
-                  }`}
-                >
-                  {item.shortName}
-
-                  {item.popular && (
-                    <span
-                      className={`ml-2 rounded-full px-2 py-1 text-[9px] font-black uppercase ${
-                        active
-                          ? "bg-black text-white"
-                          : "bg-green-500/10 text-green-500"
-                      }`}
-                    >
-                      Popular
-                    </span>
-                  )}
-                </button>
-              );
-            }
-          )}
+                {item.popular && (
+                  <span
+                    className={`ml-1 rounded-full px-1.5 py-0.5 text-[7px] font-black uppercase sm:ml-2 sm:px-2 sm:py-1 sm:text-[9px] ${
+                      active
+                        ? "bg-black text-white"
+                        : "bg-green-500/10 text-green-500"
+                    }`}
+                  >
+                    Popular
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-
-          {/* LEFT */}
-
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6 md:p-9">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-wider text-green-500">
+        <div className="mt-5 grid gap-5 sm:mt-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
+          {/* ACCOUNT + RULES */}
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 sm:rounded-3xl sm:p-7 lg:p-9">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-green-500 sm:text-sm">
                   {program.name}
                 </p>
 
-                <h2 className="mt-3 text-3xl font-black">
+                <h2 className="mt-2 text-xl font-black sm:mt-3 sm:text-3xl">
                   Select Account Size
                 </h2>
               </div>
 
               {program.popular && (
-                <span className="rounded-full bg-green-500/10 px-4 py-2 text-xs font-bold uppercase text-green-500">
-                  Most Popular
+                <span className="shrink-0 rounded-full bg-green-500/10 px-2.5 py-1.5 text-[9px] font-bold uppercase text-green-500 sm:px-4 sm:py-2 sm:text-xs">
+                  Popular
                 </span>
               )}
             </div>
 
-            <p className="mt-5 max-w-2xl leading-7 text-gray-400">
+            <p className="mt-3 text-xs leading-5 text-gray-400 sm:mt-5 sm:text-base sm:leading-7">
               {program.description}
             </p>
 
             {/* ACCOUNT SIZES */}
-
-            <div className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {program.accounts.map(
-                (item, index) => (
-                  <button
-                    key={item.size}
-                    type="button"
-                    onClick={() =>
-                      changeAccount(
-                        index
-                      )
-                    }
-                    className={`rounded-xl border px-4 py-5 font-bold transition ${
-                      selectedAccount ===
-                      index
-                        ? "border-green-500 bg-green-500 text-black"
-                        : "border-zinc-700 bg-black text-white hover:border-green-500"
-                    }`}
-                  >
-                    {item.size}
-                  </button>
-                )
-              )}
+            <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-8 sm:gap-3">
+              {program.accounts.map((item, index) => (
+                <button
+                  key={item.size}
+                  type="button"
+                  onClick={() => changeAccount(index)}
+                  className={`rounded-xl border px-2 py-3.5 text-sm font-bold transition sm:px-4 sm:py-5 sm:text-base ${
+                    selectedAccount === index
+                      ? "border-green-500 bg-green-500 text-black"
+                      : "border-zinc-700 bg-black text-white hover:border-green-500"
+                  }`}
+                >
+                  {item.size}
+                </button>
+              ))}
             </div>
 
             {/* TRADING RULES */}
-
-            <div className="mt-10 rounded-2xl border border-zinc-800 bg-black p-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="mt-6 rounded-2xl border border-zinc-800 bg-black p-4 sm:mt-10 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-500">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-500 sm:text-xs">
                     Trading Rules
                   </p>
 
-                  <h3 className="mt-2 text-xl font-bold">
-                    {program.name} Rules
+                  <h3 className="mt-1.5 text-base font-bold sm:mt-2 sm:text-xl">
+                    {program.shortName} Rules
                   </h3>
                 </div>
 
-                <span className="rounded-full bg-green-500/10 px-3 py-2 text-xs font-bold text-green-500">
+                <span className="shrink-0 rounded-full bg-green-500/10 px-2.5 py-1.5 text-[10px] font-bold text-green-500 sm:px-3 sm:py-2 sm:text-xs">
                   {account.size}
                 </span>
               </div>
 
-              {selectedProgram ===
-                "THREE_STEP" && (
+              {selectedProgram === "THREE_STEP" && (
                 <>
-                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <div className="mt-4 grid gap-3 sm:mt-6 md:grid-cols-3">
                     <PhaseRules
                       title="Phase 1"
-                      rules={
-                        TRADING_RULES
-                          .THREE_STEP
-                          .PHASE_1
-                      }
+                      rules={TRADING_RULES.THREE_STEP.PHASE_1}
                     />
 
                     <PhaseRules
                       title="Phase 2"
-                      rules={
-                        TRADING_RULES
-                          .THREE_STEP
-                          .PHASE_2
-                      }
+                      rules={TRADING_RULES.THREE_STEP.PHASE_2}
                     />
 
                     <PhaseRules
                       title="Phase 3"
-                      rules={
-                        TRADING_RULES
-                          .THREE_STEP
-                          .PHASE_3
-                      }
+                      rules={TRADING_RULES.THREE_STEP.PHASE_3}
                     />
                   </div>
 
-                  <div className="mt-4 grid gap-4">
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4">
                     <RuleBox
                       label="Profit Split"
                       value={`${TRADING_RULES.THREE_STEP.FUNDED.profitSplit}%`}
@@ -755,30 +576,21 @@ function ChallengesContent() {
                 </>
               )}
 
-              {selectedProgram ===
-                "TWO_STEP" && (
+              {selectedProgram === "TWO_STEP" && (
                 <>
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <div className="mt-4 grid gap-3 sm:mt-6 md:grid-cols-2">
                     <PhaseRules
                       title="Phase 1"
-                      rules={
-                        TRADING_RULES
-                          .TWO_STEP
-                          .PHASE_1
-                      }
+                      rules={TRADING_RULES.TWO_STEP.PHASE_1}
                     />
 
                     <PhaseRules
                       title="Phase 2"
-                      rules={
-                        TRADING_RULES
-                          .TWO_STEP
-                          .PHASE_2
-                      }
+                      rules={TRADING_RULES.TWO_STEP.PHASE_2}
                     />
                   </div>
 
-                  <div className="mt-4 grid gap-4">
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4">
                     <RuleBox
                       label="Profit Split"
                       value={`${TRADING_RULES.TWO_STEP.FUNDED.profitSplit}%`}
@@ -792,65 +604,54 @@ function ChallengesContent() {
                 </>
               )}
 
-              {selectedProgram ===
-                "ONE_STEP" && (
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <PhaseRules
-                    title="Evaluation Phase"
-                    rules={
-                      TRADING_RULES
-                        .ONE_STEP
-                        .PHASE_1
-                    }
-                  />
+              {selectedProgram === "ONE_STEP" && (
+                <>
+                  <div className="mt-4 sm:mt-6">
+                    <PhaseRules
+                      title="Evaluation Phase"
+                      rules={TRADING_RULES.ONE_STEP.PHASE_1}
+                    />
+                  </div>
 
-                  <RuleBox
-                    label="Profit Split"
-                    value={`${TRADING_RULES.ONE_STEP.FUNDED.profitSplit}%`}
-                  />
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <RuleBox
+                      label="Profit Split"
+                      value={`${TRADING_RULES.ONE_STEP.FUNDED.profitSplit}%`}
+                    />
 
-                  <RuleBox
-                    label="Withdrawal"
-                    value={`Every ${TRADING_RULES.ONE_STEP.FUNDED.withdrawalDays} Days`}
-                  />
-                </div>
+                    <RuleBox
+                      label="Withdrawal"
+                      value={`Every ${TRADING_RULES.ONE_STEP.FUNDED.withdrawalDays} Days`}
+                    />
+                  </div>
+                </>
               )}
 
-              {selectedProgram ===
-                "INSTANT" && (
-                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                  <RuleBox
-                    label="Profit Target"
-                    value="None"
-                  />
+              {selectedProgram === "INSTANT" && (
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-3">
+                  <RuleBox label="Profit Target" value="None" />
 
                   <RuleBox
                     label="Daily Drawdown"
                     value={`${TRADING_RULES.INSTANT.FUNDED.dailyDrawdown}% ${formatRuleType(
-                      TRADING_RULES
-                        .INSTANT
-                        .FUNDED
-                        .dailyDrawdownType
+                      TRADING_RULES.INSTANT.FUNDED.dailyDrawdownType
                     )}`}
                   />
 
                   <RuleBox
                     label="Maximum Drawdown"
                     value={`${TRADING_RULES.INSTANT.FUNDED.maxDrawdown}% ${formatRuleType(
-                      TRADING_RULES
-                        .INSTANT
-                        .FUNDED
-                        .maxDrawdownType
+                      TRADING_RULES.INSTANT.FUNDED.maxDrawdownType
                     )}`}
                   />
 
                   <RuleBox
-                    label="Minimum Trading Days"
+                    label="Min. Trading Days"
                     value={`${TRADING_RULES.INSTANT.FUNDED.minimumTradingDays} Days`}
                   />
 
                   <RuleBox
-                    label="Consistency Rule"
+                    label="Consistency"
                     value={`${TRADING_RULES.INSTANT.FUNDED.consistencyRule}%`}
                   />
 
@@ -859,68 +660,64 @@ function ChallengesContent() {
                     value={`${TRADING_RULES.INSTANT.FUNDED.profitSplit}%`}
                   />
 
-                  <RuleBox
-                    label="Withdrawal"
-                    value={`Every ${TRADING_RULES.INSTANT.FUNDED.withdrawalDays} Days`}
-                  />
+                  <div className="col-span-2 sm:col-span-1">
+                    <RuleBox
+                      label="Withdrawal"
+                      value={`Every ${TRADING_RULES.INSTANT.FUNDED.withdrawalDays} Days`}
+                    />
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
           {/* ORDER SUMMARY */}
+          <div className="h-fit rounded-2xl border border-green-500/20 bg-zinc-950 p-4 sm:rounded-3xl sm:p-7 lg:sticky lg:top-28 lg:p-9">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-500 sm:text-sm">
+                  Order Summary
+                </p>
 
-          <div className="h-fit rounded-3xl border border-green-500/20 bg-zinc-950 p-6 md:p-9 lg:sticky lg:top-28">
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-green-500">
-              Order Summary
-            </p>
+                <h2 className="mt-2 text-lg font-bold sm:text-2xl">
+                  {program.name}
+                </h2>
+              </div>
 
-            <div className="mt-7">
-              <p className="text-sm text-gray-500">
-                Program
-              </p>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">
+                  Account
+                </p>
 
-              <h2 className="mt-2 text-2xl font-bold">
-                {program.name}
-              </h2>
-            </div>
-
-            <div className="mt-7 border-t border-zinc-800 pt-7">
-              <p className="text-sm text-gray-500">
-                Account Size
-              </p>
-
-              <p className="mt-2 text-4xl font-black">
-                {account.size}
-              </p>
-            </div>
-
-            <div className="mt-7 border-t border-zinc-800 pt-7">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">
-                    Account Fee
-                  </p>
-
-                  <p className="mt-2 text-4xl font-black text-green-500">
-                    ${account.price}
-                  </p>
-                </div>
-
-                <span className="text-xs text-gray-500">
-                  One-time fee
-                </span>
+                <p className="mt-1 text-xl font-black sm:text-2xl">
+                  {account.size}
+                </p>
               </div>
             </div>
 
-            {/* PROMO CODE */}
+            <div className="mt-5 flex items-end justify-between border-t border-zinc-800 pt-5">
+              <div>
+                <p className="text-xs text-gray-500">
+                  Account Fee
+                </p>
 
-            <div className="mt-8 rounded-xl border border-zinc-800 bg-black p-4">
-              <p className="text-sm font-bold">
+                <p className="mt-1 text-3xl font-black text-green-500 sm:text-4xl">
+                  ${account.price}
+                </p>
+              </div>
+
+              <span className="pb-1 text-[10px] text-gray-500 sm:text-xs">
+                One-time fee
+              </span>
+            </div>
+
+            {/* PROMO */}
+            <div className="mt-5 rounded-xl border border-zinc-800 bg-black p-3.5 sm:mt-7 sm:p-4">
+              <p className="text-xs font-bold sm:text-sm">
                 Promo Code
               </p>
 
-              <div className="mt-3 flex gap-2">
+              <div className="mt-2.5 flex gap-2 sm:mt-3">
                 <input
                   type="text"
                   value={promoInput}
@@ -929,25 +726,23 @@ function ChallengesContent() {
                       event.target.value.toUpperCase()
                     )
                   }
-                  placeholder="Enter promo code"
+                  placeholder="Promo code"
                   disabled={
-                    promoLoading ||
-                    appliedPromo !== null
+                    promoLoading || appliedPromo !== null
                   }
-                  className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60"
+                  className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-xs text-white outline-none transition placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60 sm:px-4 sm:py-3 sm:text-sm"
                 />
 
                 <button
                   type="button"
                   onClick={applyPromo}
                   disabled={
-                    promoLoading ||
-                    appliedPromo !== null
+                    promoLoading || appliedPromo !== null
                   }
-                  className="rounded-lg bg-green-500 px-5 py-3 text-sm font-bold text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-lg bg-green-500 px-4 py-2.5 text-xs font-bold text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-5 sm:py-3 sm:text-sm"
                 >
                   {promoLoading
-                    ? "Applying..."
+                    ? "..."
                     : appliedPromo
                     ? "Applied"
                     : "Apply"}
@@ -956,7 +751,7 @@ function ChallengesContent() {
 
               {promoMessage && (
                 <p
-                  className={`mt-3 text-sm ${
+                  className={`mt-2 text-xs sm:mt-3 sm:text-sm ${
                     appliedPromo
                       ? "text-green-500"
                       : "text-red-400"
@@ -967,67 +762,54 @@ function ChallengesContent() {
               )}
             </div>
 
-            {/* PRICE SUMMARY */}
-
-            <div className="mt-6 rounded-xl border border-zinc-800 bg-black p-4">
-              <div className="flex items-center justify-between text-sm">
+            {/* PRICE */}
+            <div className="mt-4 rounded-xl border border-zinc-800 bg-black p-3.5 sm:mt-5 sm:p-4">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
                 <span className="text-gray-400">
                   Subtotal
                 </span>
-
                 <span className="font-bold">
-                  ${account.price}
+                  ${account.price.toFixed(2)}
                 </span>
               </div>
 
               {discountPercent > 0 && (
-                <div className="mt-3 flex items-center justify-between text-sm">
+                <div className="mt-2.5 flex items-center justify-between text-xs sm:text-sm">
                   <span className="text-green-500">
-                    Discount (
-                    {discountPercent}%)
+                    Discount ({discountPercent}%)
                   </span>
 
                   <span className="font-bold text-green-500">
-                    -$
-                    {discountAmount.toFixed(
-                      2
-                    )}
+                    -${discountAmount.toFixed(2)}
                   </span>
                 </div>
               )}
 
-              <div className="mt-4 flex items-center justify-between border-t border-zinc-800 pt-4">
-                <span className="font-bold">
+              <div className="mt-3 flex items-center justify-between border-t border-zinc-800 pt-3 sm:mt-4 sm:pt-4">
+                <span className="text-sm font-bold">
                   Total
                 </span>
 
                 <span className="text-xl font-black text-green-500">
-                  $
-                  {finalPrice.toFixed(
-                    2
-                  )}
+                  ${finalPrice.toFixed(2)}
                 </span>
               </div>
             </div>
 
             {/* PAYMENT METHOD */}
-
-            <div className="mt-6">
-              <p className="mb-3 text-sm font-bold">
+            <div className="mt-5">
+              <p className="mb-2.5 text-xs font-bold sm:mb-3 sm:text-sm">
                 Payment Method
               </p>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() =>
-                    setPaymentMethod(
-                      "flutterwave"
-                    )
+                    setPaymentMethod("flutterwave")
                   }
-                  className={`rounded-xl border px-4 py-4 text-sm font-bold transition ${
-                    paymentMethod ===
-                    "flutterwave"
+                  className={`rounded-xl border px-3 py-3 text-xs font-bold transition sm:px-4 sm:py-4 sm:text-sm ${
+                    paymentMethod === "flutterwave"
                       ? "border-green-500 bg-green-500 text-black"
                       : "border-zinc-700 bg-black text-white hover:border-green-500"
                   }`}
@@ -1038,13 +820,10 @@ function ChallengesContent() {
                 <button
                   type="button"
                   onClick={() =>
-                    setPaymentMethod(
-                      "crypto"
-                    )
+                    setPaymentMethod("crypto")
                   }
-                  className={`rounded-xl border px-4 py-4 text-sm font-bold transition ${
-                    paymentMethod ===
-                    "crypto"
+                  className={`rounded-xl border px-3 py-3 text-xs font-bold transition sm:px-4 sm:py-4 sm:text-sm ${
+                    paymentMethod === "crypto"
                       ? "border-green-500 bg-green-500 text-black"
                       : "border-zinc-700 bg-black text-white hover:border-green-500"
                   }`}
@@ -1052,51 +831,34 @@ function ChallengesContent() {
                   Crypto
                 </button>
               </div>
-
-              <p className="mt-3 text-xs text-gray-500">
-                {paymentMethod ===
-                "flutterwave"
-                  ? "Pay securely with card or supported bank payment methods."
-                  : "Pay using cryptocurrency."}
-              </p>
             </div>
 
             {/* CHECKOUT */}
-
             <button
               type="button"
               onClick={handleBuy}
               disabled={loading}
-              className="mt-8 w-full rounded-xl bg-green-500 px-6 py-4 font-bold text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 w-full rounded-xl bg-green-500 px-5 py-3.5 text-sm font-black text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50 sm:mt-7 sm:px-6 sm:py-4 sm:text-base"
             >
               {loading
                 ? "Preparing Checkout..."
-                : paymentMethod ===
-                  "crypto"
-                ? `Pay with Crypto — $${finalPrice.toFixed(
-                    2
-                  )}`
-                : `Checkout — $${finalPrice.toFixed(
-                    2
-                  )}`}
+                : paymentMethod === "crypto"
+                ? `Pay with Crypto — $${finalPrice.toFixed(2)}`
+                : `Checkout — $${finalPrice.toFixed(2)}`}
             </button>
 
-            <p className="mt-4 text-center text-xs leading-5 text-gray-600">
-              By checking out, you
-              confirm that you have
-              reviewed the trading rules
-              applicable to your selected
-              Mivo Capital account.
+            <p className="mt-3 text-center text-[10px] leading-4 text-gray-600 sm:mt-4 sm:text-xs sm:leading-5">
+              By checking out, you confirm that you have
+              reviewed the applicable Mivo Capital trading
+              rules.
             </p>
           </div>
         </div>
 
-        {/* BACK */}
-
-        <div className="mt-10 text-center">
+        <div className="mt-7 text-center sm:mt-10">
           <Link
             href="/dashboard"
-            className="text-sm text-gray-500 transition hover:text-white"
+            className="text-xs text-gray-500 transition hover:text-white sm:text-sm"
           >
             ← Back to Dashboard
           </Link>
@@ -1109,9 +871,7 @@ function ChallengesContent() {
 export default function ChallengesPage() {
   return (
     <Suspense
-      fallback={
-        <div className="min-h-screen bg-black" />
-      }
+      fallback={<div className="min-h-screen bg-black" />}
     >
       <ChallengesContent />
     </Suspense>
