@@ -1,16 +1,28 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { createToken } from "@/lib/auth";
+import { SignJWT } from "jose";
+import { cookies } from "next/headers";
+
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || "mivo-secret-key"
+);
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+
+    const email = body.email?.trim().toLowerCase();
+    const password = body.password;
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password are required." },
-        { status: 400 }
+        {
+          error: "Email and password are required.",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
@@ -22,8 +34,35 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid email or password." },
-        { status: 401 }
+        {
+          error: "Invalid email or password.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    if (user.role !== "ADMIN") {
+      return NextResponse.json(
+        {
+          error: "Admin access only.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (!user.password) {
+      return NextResponse.json(
+        {
+          error:
+            "This account does not have a password. Please use Google login.",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
@@ -34,30 +73,30 @@ export async function POST(request: Request) {
 
     if (!validPassword) {
       return NextResponse.json(
-        { error: "Invalid email or password." },
-        { status: 401 }
+        {
+          error: "Invalid email or password.",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
-    if (user.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "This account does not have admin access." },
-        { status: 403 }
-      );
-    }
-
-    const token = createToken({
-      id: user.id,
+    const token = await new SignJWT({
+      userId: user.id,
       email: user.email,
       role: user.role,
-    });
+    })
+      .setProtectedHeader({
+        alg: "HS256",
+      })
+      .setIssuedAt()
+      .setExpirationTime("7d")
+      .sign(JWT_SECRET);
 
-    const response = NextResponse.json({
-      success: true,
-      message: "Admin login successful.",
-    });
+    const cookieStore = await cookies();
 
-    response.cookies.set("token", token, {
+    cookieStore.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -65,13 +104,25 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    return response;
+    return NextResponse.json({
+      message: "Admin login successful.",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
     console.error("ADMIN LOGIN ERROR:", error);
 
     return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
+      {
+        error: "Something went wrong.",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

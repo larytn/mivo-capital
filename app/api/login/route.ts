@@ -1,11 +1,30 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { createToken } from "@/lib/auth";
+import { SignJWT } from "jose";
+import { cookies } from "next/headers";
+
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || "mivo-secret-key"
+);
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+
+    const email = body.email?.trim().toLowerCase();
+    const password = body.password;
+
+    if (!email || !password) {
+      return NextResponse.json(
+        {
+          error: "Email and password are required.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     const user = await prisma.user.findUnique({
       where: {
@@ -15,8 +34,24 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid email or password" },
-        { status: 401 }
+        {
+          error: "Invalid email or password.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    if (!user.password) {
+      return NextResponse.json(
+        {
+          error:
+            "This account uses Google login. Please continue with Google.",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
@@ -27,38 +62,30 @@ export async function POST(request: Request) {
 
     if (!validPassword) {
       return NextResponse.json(
-        { error: "Invalid email or password" },
-        { status: 401 }
+        {
+          error: "Invalid email or password.",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
-    const token = createToken({
-      id: user.id,
+    const token = await new SignJWT({
+      userId: user.id,
       email: user.email,
       role: user.role,
-    });
+    })
+      .setProtectedHeader({
+        alg: "HS256",
+      })
+      .setIssuedAt()
+      .setExpirationTime("7d")
+      .sign(JWT_SECRET);
 
-    console.log("Generated Token:", token);
+    const cookieStore = await cookies();
 
-    const response = new NextResponse(
-      JSON.stringify({
-        message: "Login successful",
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    response.cookies.set("token", token, {
+    cookieStore.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -66,18 +93,21 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    console.log(
-      "Cookie Header:",
-      response.headers.get("set-cookie")
-    );
-
-    return response;
+    return NextResponse.json({
+      message: "Login successful.",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
-    console.error(error);
+    console.error("LOGIN ERROR:", error);
 
     return NextResponse.json(
       {
-        error: "Internal Server Error",
+        error: "Something went wrong.",
       },
       {
         status: 500,

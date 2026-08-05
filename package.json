@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-   "build": "prisma generate && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -13,6 +13,7 @@
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",
     "flutterwave-node-v3": "^1.4.1",
+    "jose": "^6.2.8",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "next": "16.2.12",

@@ -8,12 +8,23 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
+
+  // Password is optional because Google-created accounts
+  // may not initially have a local password.
+  password String?
+
   role      String   @default("USER")
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  // AUTH
+  googleId String? @unique
+
+  passwordResetToken     String?   @unique
+  passwordResetExpiresAt DateTime?
 
   // REFERRALS
   referralCode String? @unique
@@ -22,10 +33,10 @@ model User {
   referredBy User?  @relation("UserReferrals", fields: [referredById], references: [id])
   referrals  User[] @relation("UserReferrals")
 
-  challenges  Challenge[]
-  payments    Payment[]
-  kyc         KYC?
-  withdrawals Withdrawal[]
+  challenges     Challenge[]
+  payments       Payment[]
+  kyc            KYC?
+  withdrawals    Withdrawal[]
   supportTickets SupportTicket[]
 }
 
@@ -91,10 +102,10 @@ model Payment {
   challengeId              String?  @unique
   accountSize              String
   challengeType            String
- flutterwaveTransactionId String? @unique
-nowPaymentsPaymentId     String? @unique
-paymentMethod            String?
-promoCode                 String?
+  flutterwaveTransactionId String?  @unique
+  nowPaymentsPaymentId     String?  @unique
+  paymentMethod            String?
+  promoCode                String?
   updatedAt                DateTime @updatedAt
 
   challenge Challenge? @relation(fields: [challengeId], references: [id])
@@ -130,7 +141,7 @@ model Withdrawal {
   id String @id @default(cuid())
 
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   challengeId String?
   challenge   Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
@@ -160,7 +171,7 @@ model Trade {
   symbol String
 
   type   String?
-  volume Float @default(0)
+  volume Float   @default(0)
 
   openPrice  Float?
   closePrice Float?
@@ -199,6 +210,7 @@ model AccountSnapshot {
   @@index([challengeId])
   @@index([challengeId, recordedAt])
 }
+
 model PromoCode {
   id String @id @default(cuid())
 
@@ -212,7 +224,7 @@ model PromoCode {
 
   // Optional limits
   maxUses   Int?
-  usedCount Int @default(0)
+  usedCount Int  @default(0)
 
   // Optional expiry date
   expiresAt DateTime?
@@ -220,6 +232,7 @@ model PromoCode {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 model SupportTicket {
   id         String   @id @default(cuid())
   subject    String
@@ -230,5 +243,5 @@ model SupportTicket {
   updatedAt  DateTime @updatedAt
 
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
