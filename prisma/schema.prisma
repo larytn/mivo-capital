@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  name       String
+  email      String   @unique
+  password   String
+  role       String   @default("USER")
+  createdAt  DateTime @default(now())
+
+  challenges Challenge[]
+  payments   Payment[]
+  kyc        KYC?
+  withdrawals Withdrawal[]
+}
+
+model Challenge {
+  id      String @id @default(cuid())
+  account String
+  price   Float
+  type    String
+
+  // Product architecture
+  accountType String @default("TWO_STEP")
+  stage       String @default("PHASE_1")
+  status      String @default("PENDING")
+
+  createdAt  DateTime  @default(now())
+  userId     String
+  assignedAt DateTime?
+
+  // Trading account credentials
+  broker           String?
+  investorPassword String?
+  mt5Login         String?
+  mt5Password      String?
+  platform         String?
+  server           String?
+
+  // Trading rules
+  dailyDrawdown    Float @default(5)
+  maxDrawdown      Float @default(10)
+  minimumTradeDays Int   @default(5)
+  profitTarget     Float @default(8)
+
+  // Account performance
+  startingBalance    Float @default(0)
+  currentBalance     Float @default(0)
+  currentEquity      Float @default(0)
+  profit             Float @default(0)
+  withdrawableProfit Float @default(0)
+  tradingDays        Int   @default(0)
+
+  // Breach / daily drawdown tracking
+  breachReason         String?
+  dailyStartingBalance Float?
+  dailyStartingEquity  Float?
+  lastDailyReset       DateTime?
+
+  // Relations
+  user        User              @relation(fields: [userId], references: [id])
+  payment     Payment?
+  withdrawals Withdrawal[]
+  trades      Trade[]
+  snapshots   AccountSnapshot[]
+}
+
+model Payment {
+  id                       String   @id @default(cuid())
+  txRef                    String   @unique
+  amount                   Float
+  currency                 String   @default("USD")
+  status                   String   @default("PENDING")
+  createdAt                DateTime @default(now())
+  userId                   String
+  challengeId              String?  @unique
+  accountSize              String
+  challengeType            String
+ flutterwaveTransactionId String? @unique
+nowPaymentsPaymentId     String? @unique
+paymentMethod            String?
+promoCode                 String?
+  updatedAt                DateTime @updatedAt
+
+  challenge Challenge? @relation(fields: [challengeId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+}
+
+model KYC {
+  id String @id @default(cuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName    String
+  dateOfBirth DateTime
+  nationality String
+
+  idType   String
+  idNumber String
+
+  idFrontUrl     String
+  idBackUrl      String?
+  selfieUrl      String
+  proofOfAddress String?
+
+  status    String  @default("PENDING")
+  adminNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Withdrawal {
+  id String @id @default(cuid())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  challengeId String?
+  challenge   Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+
+  amount Float
+  method String
+
+  accountName   String?
+  accountNumber String?
+  bankName      String?
+
+  cryptoNetwork String?
+  walletAddress String?
+
+  status    String  @default("PENDING")
+  adminNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Trade {
+  id          String @id @default(cuid())
+  challengeId String
+
+  ticket String
+  symbol String
+
+  type   String?
+  volume Float @default(0)
+
+  openPrice  Float?
+  closePrice Float?
+
+  stopLoss   Float?
+  takeProfit Float?
+
+  openedAt DateTime
+  closedAt DateTime?
+
+  commission Float @default(0)
+  swap       Float @default(0)
+  profit     Float @default(0)
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([challengeId, ticket])
+  @@index([challengeId])
+  @@index([openedAt])
+}
+
+model AccountSnapshot {
+  id          String @id @default(cuid())
+  challengeId String
+
+  balance Float
+  equity  Float
+
+  recordedAt DateTime @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId])
+  @@index([challengeId, recordedAt])
+}
+model PromoCode {
+  id String @id @default(cuid())
+
+  code String @unique
+
+  // Percentage discount: 10 = 10% off
+  discountPercent Float
+
+  // Promo status
+  active Boolean @default(true)
+
+  // Optional limits
+  maxUses   Int?
+  usedCount Int @default(0)
+
+  // Optional expiry date
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
