@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -53,10 +55,32 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleLoading(true);
+
+      await signIn("google", {
+        callbackUrl: "/dashboard",
+      });
+    } catch (error) {
+      console.error("GOOGLE LOGIN ERROR:", error);
+
+      alert(
+        "Unable to continue with Google. Please try again."
+      );
+
+      setGoogleLoading(false);
+    }
+  };
+
   const handleKeyDown = (
     event: React.KeyboardEvent<HTMLInputElement>
   ) => {
-    if (event.key === "Enter" && !loading) {
+    if (
+      event.key === "Enter" &&
+      !loading &&
+      !googleLoading
+    ) {
       handleLogin();
     }
   };
@@ -65,6 +89,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-8 text-white sm:px-6">
       <div className="w-full max-w-md">
         {/* BRAND */}
+
         <div className="mb-7 text-center sm:mb-8">
           <Link
             href="/"
@@ -79,6 +104,7 @@ export default function LoginPage() {
         </div>
 
         {/* LOGIN CARD */}
+
         <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl sm:p-8">
           <div className="text-center">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-500 sm:text-xs">
@@ -95,8 +121,63 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {/* GOOGLE LOGIN */}
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={googleLoading || loading}
+            className="mt-7 flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-700 bg-white px-6 py-3.5 text-sm font-bold text-black transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 sm:py-4"
+          >
+            {!googleLoading && (
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill="#4285F4"
+                  d="M21.35 12.21c0-.74-.07-1.45-.19-2.13H12v4.03h5.24a4.48 4.48 0 0 1-1.94 2.94v2.61h3.14c1.84-1.69 2.91-4.18 2.91-7.45Z"
+                />
+
+                <path
+                  fill="#34A853"
+                  d="M12 21.72c2.62 0 4.82-.87 6.43-2.36l-3.14-2.61c-.87.58-1.98.93-3.29.93-2.53 0-4.67-1.71-5.44-4.01H3.32v2.7A9.72 9.72 0 0 0 12 21.72Z"
+                />
+
+                <path
+                  fill="#FBBC05"
+                  d="M6.56 13.67A5.84 5.84 0 0 1 6.25 12c0-.58.1-1.14.31-1.67v-2.7H3.32A9.72 9.72 0 0 0 2.28 12c0 1.57.38 3.06 1.04 4.37l3.24-2.7Z"
+                />
+
+                <path
+                  fill="#EA4335"
+                  d="M12 6.32c1.43 0 2.71.49 3.72 1.45l2.78-2.78A9.32 9.32 0 0 0 12 2.28a9.72 9.72 0 0 0-8.68 5.35l3.24 2.7C7.33 8.03 9.47 6.32 12 6.32Z"
+                />
+              </svg>
+            )}
+
+            {googleLoading
+              ? "Connecting to Google..."
+              : "Continue with Google"}
+          </button>
+
+          {/* DIVIDER */}
+
+          <div className="my-6 flex items-center gap-4">
+            <div className="h-px flex-1 bg-zinc-800" />
+
+            <span className="text-xs font-medium uppercase text-gray-600">
+              Or continue with email
+            </span>
+
+            <div className="h-px flex-1 bg-zinc-800" />
+          </div>
+
           {/* EMAIL */}
-          <div className="mt-7">
+
+          <div>
             <label
               htmlFor="email"
               className="mb-2 block text-xs font-medium text-gray-400 sm:text-sm"
@@ -111,14 +192,17 @@ export default function LoginPage() {
               autoComplete="email"
               placeholder="Enter your email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
               onKeyDown={handleKeyDown}
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60 sm:py-4"
             />
           </div>
 
           {/* PASSWORD */}
+
           <div className="mt-4">
             <label
               htmlFor="password"
@@ -133,35 +217,46 @@ export default function LoginPage() {
               autoComplete="current-password"
               placeholder="Enter your password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
               onKeyDown={handleKeyDown}
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60 sm:py-4"
             />
           </div>
-<div className="mt-3 text-right">
-  <Link
-    href="/forgot-password"
-    className="text-sm font-semibold text-green-500 transition hover:text-green-400"
-  >
-    Forgot Password?
-  </Link>
-</div>
+
+          {/* FORGOT PASSWORD */}
+
+          <div className="mt-3 text-right">
+            <Link
+              href="/forgot-password"
+              className="text-xs font-semibold text-green-500 transition hover:text-green-400 sm:text-sm"
+            >
+              Forgot Password?
+            </Link>
+          </div>
+
           {/* LOGIN */}
+
           <button
             type="button"
             onClick={handleLogin}
             disabled={
               loading ||
+              googleLoading ||
               !email.trim() ||
               !password
             }
             className="mt-6 w-full rounded-xl bg-green-500 px-6 py-3.5 text-sm font-black text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50 sm:py-4"
           >
-            {loading ? "Logging In..." : "Login"}
+            {loading
+              ? "Logging In..."
+              : "Login"}
           </button>
 
           {/* SIGNUP */}
+
           <p className="mt-6 text-center text-xs text-gray-400 sm:text-sm">
             Don&apos;t have an account?{" "}
             <Link
@@ -174,6 +269,7 @@ export default function LoginPage() {
         </section>
 
         {/* BACK */}
+
         <div className="mt-6 text-center">
           <Link
             href="/"

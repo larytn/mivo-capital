@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "next": "16.2.12",
+    "next-auth": "^5.0.0-beta.32",
     "next-cloudinary": "^6.17.5",
     "prisma": "^6.19.3",
     "react": "19.2.4",

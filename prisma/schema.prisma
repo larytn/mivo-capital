@@ -12,17 +12,18 @@ model User {
   name  String
   email String @unique
 
-  // Password is optional because Google-created accounts
-  // may not initially have a local password.
-  password String?
+  // AUTH
+  // Optional because Google-created accounts may not
+  // initially have a local password.
+  password     String?
+  authProvider String  @default("EMAIL")
+  googleId     String? @unique
 
   role      String   @default("USER")
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  // AUTH
-  googleId String? @unique
-
+  // PASSWORD RESET
   passwordResetToken     String?   @unique
   passwordResetExpiresAt DateTime?
 
@@ -33,6 +34,7 @@ model User {
   referredBy User?  @relation("UserReferrals", fields: [referredById], references: [id])
   referrals  User[] @relation("UserReferrals")
 
+  // RELATIONS
   challenges     Challenge[]
   payments       Payment[]
   kyc            KYC?
