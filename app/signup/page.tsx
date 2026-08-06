@@ -12,12 +12,20 @@ function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const referralCode = searchParams.get("ref");
+  // Automatically fills referral code when someone visits:
+  // /signup?ref=CODE
+  const referralFromUrl =
+    searchParams.get("ref") || "";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const [referralCode, setReferralCode] =
+    useState(referralFromUrl);
+
   const [loading, setLoading] = useState(false);
+
   const [googleLoading, setGoogleLoading] =
     useState(false);
 
@@ -46,7 +54,9 @@ function SignupContent() {
           name: name.trim(),
           email: email.trim(),
           password,
-          referralCode,
+
+          referralCode:
+            referralCode.trim() || null,
         }),
       });
 
@@ -75,6 +85,17 @@ function SignupContent() {
   const handleGoogleSignup = async () => {
     try {
       setGoogleLoading(true);
+
+      // Store referral code temporarily so it survives
+      // the redirect to Google and back to Mivo Capital.
+      if (referralCode.trim()) {
+        document.cookie = `mivo_referral=${encodeURIComponent(
+          referralCode.trim().toUpperCase()
+        )}; path=/; max-age=600; SameSite=Lax`;
+      } else {
+        document.cookie =
+          "mivo_referral=; path=/; max-age=0; SameSite=Lax";
+      }
 
       await signIn("google", {
         callbackUrl: "/dashboard",
@@ -108,6 +129,7 @@ function SignupContent() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-8 text-white sm:px-6">
       <div className="w-full max-w-md">
+
         {/* BRAND */}
 
         <div className="mb-7 text-center sm:mb-8">
@@ -126,6 +148,7 @@ function SignupContent() {
         {/* SIGNUP CARD */}
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl sm:p-8">
+
           <div className="text-center">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-green-500 sm:text-xs">
               Get Started
@@ -140,20 +163,6 @@ function SignupContent() {
               funded trading account.
             </p>
           </div>
-
-          {/* REFERRAL */}
-
-          {referralCode && (
-            <div className="mt-6 rounded-xl border border-green-500/20 bg-green-500/[0.08] px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                Referral Code
-              </p>
-
-              <p className="mt-1 break-all text-sm font-bold text-green-400">
-                {referralCode}
-              </p>
-            </div>
-          )}
 
           {/* GOOGLE */}
 
@@ -283,6 +292,42 @@ function SignupContent() {
               disabled={loading || googleLoading}
               className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60 sm:py-4"
             />
+          </div>
+
+          {/* REFERRAL CODE */}
+
+          <div className="mt-4">
+            <label
+              htmlFor="referralCode"
+              className="mb-2 block text-xs font-medium text-gray-400 sm:text-sm"
+            >
+              Referral Code{" "}
+              <span className="text-gray-600">
+                (Optional)
+              </span>
+            </label>
+
+            <input
+              id="referralCode"
+              type="text"
+              autoComplete="off"
+              placeholder="Enter referral code"
+              value={referralCode}
+              onChange={(e) =>
+                setReferralCode(
+                  e.target.value.toUpperCase()
+                )
+              }
+              onKeyDown={handleKeyDown}
+              disabled={loading || googleLoading}
+              className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm uppercase text-white outline-none transition placeholder:normal-case placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60 sm:py-4"
+            />
+
+            {referralFromUrl && (
+              <p className="mt-2 text-xs text-green-400">
+                Referral code applied automatically.
+              </p>
+            )}
           </div>
 
           {/* CREATE ACCOUNT */}
