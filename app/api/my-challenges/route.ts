@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
+type TokenPayload = {
+  id?: string;
+  userId?: string;
+};
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get("token")?.value;
@@ -13,9 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const payload = verifyToken(token) as {
-      id: string;
-    } | null;
+    const payload = verifyToken(token) as TokenPayload | null;
 
     if (!payload) {
       return NextResponse.json(
@@ -24,9 +27,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Email login may use "id"
+    // Google login may use "userId"
+    const userId = payload.id || payload.userId;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Invalid user session" },
+        { status: 401 }
+      );
+    }
+
+    // IMPORTANT:
+    // Only return trading accounts belonging
+    // to the currently logged-in trader.
     const challenges = await prisma.challenge.findMany({
       where: {
-        userId: payload.id,
+        userId,
       },
 
       select: {
@@ -59,14 +76,15 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(challenges);
-  } catch (error: any) {
+  } catch (error) {
     console.error("My challenges error:", error);
 
     return NextResponse.json(
       {
         error:
-          error.message ||
-          "Failed to load trading accounts.",
+          error instanceof Error
+            ? error.message
+            : "Failed to load trading accounts.",
       },
       { status: 500 }
     );
