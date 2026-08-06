@@ -1,6 +1,31 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { sendVerificationEmail } from "@/lib/email";
+
+async function generateUniqueReferralCode() {
+  while (true) {
+    const generated = `MIVO${Math.random()
+      .toString(36)
+      .substring(2, 8)
+      .toUpperCase()}`;
+
+    const existingCode =
+      await prisma.user.findUnique({
+        where: {
+          referralCode: generated,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (!existingCode) {
+      return generated;
+    }
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +51,9 @@ export async function POST(request: Request) {
         ? body.referralCode.trim().toUpperCase()
         : "";
 
-    // BASIC VALIDATION
+    // -----------------------------
+    // VALIDATION
+    // -----------------------------
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -34,7 +61,21 @@ export async function POST(request: Request) {
           error:
             "Name, email and password are required.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (name.length < 2) {
+      return NextResponse.json(
+        {
+          error:
+            "Please enter your full name.",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
@@ -44,11 +85,15 @@ export async function POST(request: Request) {
           error:
             "Password must be at least 8 characters.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    // CHECK EMAIL
+    // -----------------------------
+    // CHECK EXISTING USER
+    // -----------------------------
 
     const existingUser =
       await prisma.user.findUnique({
@@ -58,57 +103,57 @@ export async function POST(request: Request) {
       });
 
     if (existingUser) {
+      if (
+        existingUser.authProvider ===
+        "GOOGLE"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "An account already exists with this email. Please continue with Google.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (!existingUser.emailVerified) {
+        return NextResponse.json(
+          {
+            error:
+              "An account already exists with this email but has not been verified. Please verify your email.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
       return NextResponse.json(
         {
           error:
-            "An account with this email already exists.",
+            "An account already exists with this email.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    // FIND AND VALIDATE REFERRER
+    // -----------------------------
+    // FIND REFERRER
+    // -----------------------------
 
     let referrer: {
       id: string;
     } | null = null;
 
     if (referralCode) {
-      referrer = await prisma.user.findUnique({
-        where: {
-          referralCode,
-        },
-
-        select: {
-          id: true,
-        },
-      });
-
-      if (!referrer) {
-        return NextResponse.json(
-          {
-            error:
-              "Invalid referral code. Please check the code and try again.",
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    // GENERATE UNIQUE REFERRAL CODE
-
-    let newReferralCode = "";
-
-    while (!newReferralCode) {
-      const generated = `MIVO${Math.random()
-        .toString(36)
-        .substring(2, 8)
-        .toUpperCase()}`;
-
-      const existingCode =
+      referrer =
         await prisma.user.findUnique({
           where: {
-            referralCode: generated,
+            referralCode,
           },
 
           select: {
@@ -116,60 +161,163 @@ export async function POST(request: Request) {
           },
         });
 
-      if (!existingCode) {
-        newReferralCode = generated;
+      if (!referrer) {
+        return NextResponse.json(
+          {
+            error:
+              "Invalid referral code.",
+          },
+          {
+            status: 400,
+          }
+        );
       }
     }
 
+    // -----------------------------
+    // GENERATE USER REFERRAL CODE
+    // -----------------------------
+
+    const newReferralCode =
+      await generateUniqueReferralCode();
+
+    // -----------------------------
     // HASH PASSWORD
+    // -----------------------------
 
-    const hashedPassword = await bcrypt.hash(
-      password,
-      10
-    );
+    const hashedPassword =
+      await bcrypt.hash(password, 10);
 
+    // -----------------------------
+    // EMAIL VERIFICATION TOKEN
+    // -----------------------------
+
+    const verificationToken =
+      crypto.randomBytes(32).toString("hex");
+
+    // Never store the raw verification token.
+    const verificationTokenHash =
+      crypto
+        .createHash("sha256")
+        .update(verificationToken)
+        .digest("hex");
+
+    const verificationExpiresAt =
+      new Date(
+        Date.now() +
+          24 * 60 * 60 * 1000
+      );
+
+    // -----------------------------
     // CREATE USER
+    // -----------------------------
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        authProvider: "EMAIL",
+    const user =
+      await prisma.user.create({
+        data: {
+          name,
+          email,
 
-        referralCode: newReferralCode,
+          password: hashedPassword,
 
-        referredById: referrer
-          ? referrer.id
-          : null,
-      },
+          authProvider: "EMAIL",
 
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        referralCode: true,
-      },
-    });
+          emailVerified: false,
+
+          emailVerificationToken:
+            verificationTokenHash,
+
+          emailVerificationExpiresAt:
+            verificationExpiresAt,
+
+          referralCode:
+            newReferralCode,
+
+          referredById:
+            referrer?.id ?? null,
+        },
+
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          referralCode: true,
+        },
+      });
+
+    // -----------------------------
+    // SEND VERIFICATION EMAIL
+    // -----------------------------
+
+    try {
+      await sendVerificationEmail({
+        email: user.email,
+        name: user.name,
+        token: verificationToken,
+      });
+    } catch (emailError) {
+      console.error(
+        "SIGNUP EMAIL ERROR:",
+        emailError
+      );
+
+      /*
+       * Remove the newly-created unverified
+       * account if the verification email
+       * could not be sent.
+       *
+       * This allows the trader to try
+       * signing up again instead of being
+       * stuck with an inaccessible account.
+       */
+      await prisma.user.delete({
+        where: {
+          id: user.id,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          error:
+            "We could not send your verification email. Please try again.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    // -----------------------------
+    // SUCCESS
+    // -----------------------------
 
     return NextResponse.json(
       {
         message:
-          "Account created successfully!",
+          "Account created successfully. Check your email and verify your account before logging in.",
 
-        user,
+        requiresEmailVerification: true,
+
+        email: user.email,
       },
-      { status: 201 }
+      {
+        status: 201,
+      }
     );
   } catch (error) {
-    console.error("SIGNUP ERROR:", error);
+    console.error(
+      "SIGNUP ERROR:",
+      error
+    );
 
     return NextResponse.json(
       {
         error:
-          "Something went wrong while creating your account.",
+          "Unable to create your account.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

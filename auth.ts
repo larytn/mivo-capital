@@ -56,7 +56,8 @@ export const { handlers, signIn, signOut, auth } =
           const email =
             user.email.trim().toLowerCase();
 
-          const cookieStore = await cookies();
+          const cookieStore =
+            await cookies();
 
           const savedReferralCode =
             cookieStore
@@ -71,7 +72,10 @@ export const { handlers, signIn, signOut, auth } =
               },
             });
 
+          // --------------------------------
           // NEW GOOGLE USER
+          // --------------------------------
+
           if (!dbUser) {
             let referrer: {
               id: string;
@@ -103,6 +107,8 @@ export const { handlers, signIn, signOut, auth } =
 
                   email,
 
+                  // Google accounts do not
+                  // initially need a password.
                   password: null,
 
                   authProvider:
@@ -111,20 +117,40 @@ export const { handlers, signIn, signOut, auth } =
                   googleId:
                     account.providerAccountId,
 
+                  // Google has already
+                  // verified ownership
+                  // of this email address.
+                  emailVerified: true,
+
+                  // No Mivo verification
+                  // token is required.
+                  emailVerificationToken:
+                    null,
+
+                  emailVerificationExpiresAt:
+                    null,
+
                   referralCode:
                     newReferralCode,
 
                   referredById:
-                    referrer?.id || null,
+                    referrer?.id ?? null,
                 },
               });
           } else {
-            // EXISTING USER LOGGING IN WITH GOOGLE
+            // --------------------------------
+            // EXISTING USER USING GOOGLE
+            // --------------------------------
 
             const updateData: {
               authProvider?: string;
               googleId?: string;
               referralCode?: string;
+              emailVerified?: boolean;
+              emailVerificationToken?:
+                string | null;
+              emailVerificationExpiresAt?:
+                Date | null;
             } = {};
 
             if (
@@ -145,6 +171,19 @@ export const { handlers, signIn, signOut, auth } =
                 await generateUniqueReferralCode();
             }
 
+            // Successful Google authentication
+            // verifies ownership of the email.
+            if (!dbUser.emailVerified) {
+              updateData.emailVerified =
+                true;
+
+              updateData.emailVerificationToken =
+                null;
+
+              updateData.emailVerificationExpiresAt =
+                null;
+            }
+
             if (
               Object.keys(updateData)
                 .length > 0
@@ -160,7 +199,9 @@ export const { handlers, signIn, signOut, auth } =
             }
           }
 
-          // CLEAR TEMPORARY REFERRAL COOKIE
+          // --------------------------------
+          // CLEAR REFERRAL COOKIE
+          // --------------------------------
 
           cookieStore.set(
             "mivo_referral",
@@ -169,13 +210,16 @@ export const { handlers, signIn, signOut, auth } =
               path: "/",
               maxAge: 0,
               sameSite: "lax",
+
               secure:
                 process.env.NODE_ENV ===
                 "production",
             }
           );
 
+          // --------------------------------
           // CREATE MIVO LOGIN TOKEN
+          // --------------------------------
 
           const token =
             await new SignJWT({

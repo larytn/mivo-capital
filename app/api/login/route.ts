@@ -12,8 +12,19 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const email = body.email?.trim().toLowerCase();
-    const password = body.password;
+    const email =
+      typeof body.email === "string"
+        ? body.email.trim().toLowerCase()
+        : "";
+
+    const password =
+      typeof body.password === "string"
+        ? body.password
+        : "";
+
+    // -----------------------------
+    // VALIDATION
+    // -----------------------------
 
     if (!email || !password) {
       return NextResponse.json(
@@ -25,6 +36,10 @@ export async function POST(request: Request) {
         }
       );
     }
+
+    // -----------------------------
+    // FIND USER
+    // -----------------------------
 
     const user = await prisma.user.findUnique({
       where: {
@@ -43,6 +58,10 @@ export async function POST(request: Request) {
       );
     }
 
+    // -----------------------------
+    // GOOGLE-ONLY ACCOUNT
+    // -----------------------------
+
     if (!user.password) {
       return NextResponse.json(
         {
@@ -54,6 +73,10 @@ export async function POST(request: Request) {
         }
       );
     }
+
+    // -----------------------------
+    // CHECK PASSWORD
+    // -----------------------------
 
     const validPassword = await bcrypt.compare(
       password,
@@ -71,6 +94,28 @@ export async function POST(request: Request) {
       );
     }
 
+    // -----------------------------
+    // EMAIL VERIFICATION
+    // -----------------------------
+
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        {
+          error:
+            "Please verify your email address before logging in.",
+          requiresEmailVerification: true,
+          email: user.email,
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    // -----------------------------
+    // CREATE SESSION TOKEN
+    // -----------------------------
+
     const token = await new SignJWT({
       userId: user.id,
       email: user.email,
@@ -87,14 +132,24 @@ export async function POST(request: Request) {
 
     cookieStore.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+
+      secure:
+        process.env.NODE_ENV === "production",
+
       sameSite: "lax",
+
       path: "/",
+
       maxAge: 60 * 60 * 24 * 7,
     });
 
+    // -----------------------------
+    // SUCCESS
+    // -----------------------------
+
     return NextResponse.json({
       message: "Login successful.",
+
       user: {
         id: user.id,
         name: user.name,

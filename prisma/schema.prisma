@@ -40,6 +40,10 @@ model User {
   kyc            KYC?
   withdrawals    Withdrawal[]
   supportTickets SupportTicket[]
+  emailVerified  Boolean         @default(false)
+
+  emailVerificationToken     String?   @unique
+  emailVerificationExpiresAt DateTime?
 }
 
 model Challenge {
