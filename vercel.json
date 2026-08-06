@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/internal/metaapi-sync",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
