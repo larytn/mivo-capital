@@ -347,6 +347,13 @@ export default function DashboardPage() {
             Profile
           </MobileMenuLink>
 
+          <MobileMenuLink
+            href="/settings"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            ⚙️ Settings
+          </MobileMenuLink>
+
           <div className="my-4 border-t border-zinc-800" />
 
           <button
@@ -430,7 +437,15 @@ export default function DashboardPage() {
               Profile
             </Link>
 
+            <Link
+              href="/settings"
+              className="block text-gray-300 transition hover:text-green-400"
+            >
+              ⚙️ Settings
+            </Link>
+
             <button
+              type="button"
               onClick={logout}
               className="text-red-500 transition hover:text-red-400"
             >
