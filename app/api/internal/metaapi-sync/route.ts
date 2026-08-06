@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { metaApi } from "@/lib/metaapi";
+import { getMetaApi } from "@/lib/metaapi";
 
 export const runtime = "nodejs";
 
@@ -23,7 +23,7 @@ type MetaApiDeal = {
   time?: Date | string;
   brokerTime?: string;
 };
-
+const metaApi = getMetaApi();
 function numberValue(
   value: unknown,
   fallback = 0
@@ -47,7 +47,11 @@ function dealDate(
       ? value
       : new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return null;
   }
 
@@ -60,10 +64,6 @@ export async function POST(
   try {
     /*
      * SECURITY
-     *
-     * Allow:
-     * 1. Internal Mivo API key
-     * 2. Vercel Cron Bearer secret
      */
 
     const apiKey =
@@ -71,28 +71,10 @@ export async function POST(
         "x-mivo-api-key"
       );
 
-    const authHeader =
-      request.headers.get(
-        "authorization"
-      );
-
-    const validInternalKey =
-      Boolean(
-        process.env.TRADING_SYNC_API_KEY &&
-          apiKey ===
-            process.env.TRADING_SYNC_API_KEY
-      );
-
-    const validCronSecret =
-      Boolean(
-        process.env.CRON_SECRET &&
-          authHeader ===
-            `Bearer ${process.env.CRON_SECRET}`
-      );
-
     if (
-      !validInternalKey &&
-      !validCronSecret
+      !process.env.TRADING_SYNC_API_KEY ||
+      apiKey !==
+        process.env.TRADING_SYNC_API_KEY
     ) {
       return NextResponse.json(
         {
@@ -206,6 +188,9 @@ export async function POST(
 
         /*
          * HISTORY RANGE
+         *
+         * Start from account assignment
+         * where possible.
          */
 
         const historyEnd =
@@ -238,8 +223,10 @@ export async function POST(
         /*
          * BALANCE OPERATIONS
          *
-         * Deposits / balance adjustments
-         * are NOT trades.
+         * These are deposits / credits /
+         * balance adjustments.
+         *
+         * They are NOT trading positions.
          */
 
         const balanceDeals =
@@ -260,7 +247,7 @@ export async function POST(
           );
 
         /*
-         * TRADING DEALS
+         * TRADING DEALS ONLY
          */
 
         const tradingDeals =
@@ -273,7 +260,10 @@ export async function POST(
           );
 
         /*
-         * GROUP DEALS BY POSITION
+         * GROUP DEALS BY POSITION ID
+         *
+         * MetaApi gives us separate
+         * entry and exit deals.
          */
 
         const positions =
@@ -304,8 +294,7 @@ export async function POST(
         }
 
         /*
-         * CONVERT POSITIONS INTO
-         * MIVO TRADES
+         * BUILD MIVO TRADES
          */
 
         const trades: any[] = [];
@@ -338,12 +327,20 @@ export async function POST(
               }
             );
 
+          /*
+           * ENTRY DEAL
+           */
+
           const entry =
             sorted.find(
               (deal) =>
                 deal.entryType ===
                 "DEAL_ENTRY_IN"
             );
+
+          /*
+           * EXIT DEAL
+           */
 
           const exit =
             [...sorted]
@@ -355,8 +352,8 @@ export async function POST(
               );
 
           /*
-           * Only completed trades
-           * are stored for now.
+           * Only save completed trades
+           * for now.
            */
 
           if (
@@ -382,6 +379,14 @@ export async function POST(
           ) {
             continue;
           }
+
+          /*
+           * PROFIT
+           *
+           * Include all position deals
+           * because commission/swap can
+           * sometimes appear separately.
+           */
 
           const positionProfit =
             sorted.reduce(
@@ -412,6 +417,12 @@ export async function POST(
                 ),
               0
             );
+
+          /*
+           * TRADE DIRECTION
+           *
+           * Use the entry deal.
+           */
 
           let tradeType:
             | string
@@ -479,7 +490,7 @@ export async function POST(
         }
 
         /*
-         * CLOSED TRADING P/L
+         * CLOSED TRADING RESULT
          */
 
         const closedTradingProfit =
@@ -499,21 +510,27 @@ export async function POST(
           );
 
         /*
-         * RECONSTRUCT BALANCE
+         * CORRECT BALANCE
          *
-         * Needed because this MetaApi
-         * account currently reports the
-         * trading P/L as account balance
-         * rather than the actual funded
-         * balance.
+         * MetaApi returned -92.40 for the
+         * test account even though history
+         * showed:
+         *
+         * +10000 balance operation
+         * -92.40 trading result
+         *
+         * Therefore reconstruct balance
+         * from broker history when MetaApi's
+         * reported balance is clearly not
+         * the actual account balance.
          */
+
+        let currentBalance =
+          metaApiBalance;
 
         const reconstructedBalance =
           balanceOperations +
           closedTradingProfit;
-
-        let currentBalance =
-          metaApiBalance;
 
         if (
           balanceOperations > 0 &&
@@ -537,6 +554,13 @@ export async function POST(
 
         /*
          * EQUITY
+         *
+         * If MetaApi's balance was clearly
+         * malformed and there are no open
+         * positions represented here,
+         * use the reconstructed balance.
+         *
+         * Otherwise preserve MetaApi equity.
          */
 
         let currentEquity =
@@ -568,6 +592,7 @@ export async function POST(
               challenge.mt5Login,
 
             success: false,
+
             skipped: true,
 
             error:
