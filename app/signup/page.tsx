@@ -94,12 +94,11 @@ function SignupContent() {
       // Do NOT send the trader directly
       // to login. Their email must first
       // be verified.
-      setRegisteredEmail(
-        data.email || normalizedEmail
-      );
+      alert(
+  data.message || "Account created successfully."
+);
 
-      setSignupComplete(true);
-      setPassword("");
+window.location.href = "/login";
     } catch (error) {
       console.error(
         "SIGNUP ERROR:",
