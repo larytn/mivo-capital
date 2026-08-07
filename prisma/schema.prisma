@@ -13,8 +13,6 @@ model User {
   email String @unique
 
   // AUTH
-  // Optional because Google-created accounts may not
-  // initially have a local password.
   password     String?
   authProvider String  @default("EMAIL")
   googleId     String? @unique
@@ -40,7 +38,8 @@ model User {
   kyc            KYC?
   withdrawals    Withdrawal[]
   supportTickets SupportTicket[]
-  emailVerified  Boolean         @default(false)
+
+  emailVerified Boolean @default(false)
 
   emailVerificationToken     String?   @unique
   emailVerificationExpiresAt DateTime?
@@ -150,7 +149,7 @@ model Withdrawal {
   id String @id @default(cuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   challengeId String?
   challenge   Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
@@ -180,7 +179,7 @@ model Trade {
   symbol String
 
   type   String?
-  volume Float   @default(0)
+  volume Float @default(0)
 
   openPrice  Float?
   closePrice Float?
@@ -225,17 +224,13 @@ model PromoCode {
 
   code String @unique
 
-  // Percentage discount: 10 = 10% off
   discountPercent Float
 
-  // Promo status
   active Boolean @default(true)
 
-  // Optional limits
   maxUses   Int?
-  usedCount Int  @default(0)
+  usedCount Int @default(0)
 
-  // Optional expiry date
   expiresAt DateTime?
 
   createdAt DateTime @default(now())
@@ -252,5 +247,36 @@ model SupportTicket {
   updatedAt  DateTime @updatedAt
 
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TradingAccountPool {
+  id String @id @default(cuid())
+
+  // MT5 credentials
+  mt5Login         String  @unique
+  mt5Password      String
+  investorPassword String?
+  server           String
+  broker           String
+  platform         String  @default("MT5")
+
+  // Account configuration
+  accountSize Float
+  accountType String
+
+  // MetaApi connection
+  metaApiAccountId String? @unique
+
+  // Pool status
+  status String @default("AVAILABLE")
+
+  // Assignment
+  challengeId String?   @unique
+  assignedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, accountSize, accountType])
 }

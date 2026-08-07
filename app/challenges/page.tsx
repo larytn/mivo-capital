@@ -35,7 +35,7 @@ const programs: Record<ProgramKey, Program> = {
     description:
       "Complete three evaluation phases with lower profit targets before progressing to a Mivo funded account.",
     accounts: [
-      { size: "$2,500", price: 19 },
+      { size: "$2,500", price: 21 },
       { size: "$5,000", price: 29 },
       { size: "$10,000", price: 49 },
       { size: "$25,000", price: 89 },
@@ -51,12 +51,12 @@ const programs: Record<ProgramKey, Program> = {
       "Our flagship evaluation program with balanced profit targets, strong risk parameters and competitive pricing.",
     popular: true,
     accounts: [
-      { size: "$2,500", price: 29 },
-      { size: "$5,000", price: 49 },
-      { size: "$10,000", price: 79 },
-      { size: "$25,000", price: 149 },
-      { size: "$50,000", price: 249 },
-      { size: "$100,000", price: 399 },
+      { size: "$2,500", price: 25 },
+      { size: "$5,000", price: 32 },
+      { size: "$10,000", price: 59 },
+      { size: "$25,000", price: 119 },
+      { size: "$50,000", price: 219 },
+      { size: "$100,000", price: 329 },
     ],
   },
 
@@ -66,12 +66,12 @@ const programs: Record<ProgramKey, Program> = {
     description:
       "Complete one evaluation phase and take the faster route toward a Mivo funded account.",
     accounts: [
-      { size: "$2,500", price: 39 },
-      { size: "$5,000", price: 59 },
-      { size: "$10,000", price: 99 },
-      { size: "$25,000", price: 179 },
-      { size: "$50,000", price: 299 },
-      { size: "$100,000", price: 499 },
+      { size: "$2,500", price: 25 },
+      { size: "$5,000", price: 32 },
+      { size: "$10,000", price: 59 },
+      { size: "$25,000", price: 119 },
+      { size: "$50,000", price: 219 },
+      { size: "$100,000", price: 329 },
     ],
   },
 
@@ -81,11 +81,11 @@ const programs: Record<ProgramKey, Program> = {
     description:
       "Skip the evaluation phases and start directly with a funded-stage account.",
     accounts: [
-      { size: "$2,500", price: 24 },
-      { size: "$5,000", price: 39 },
-      { size: "$10,000", price: 59 },
-      { size: "$25,000", price: 119 },
-      { size: "$50,000", price: 199 },
+      { size: "$2,500", price: 22 },
+      { size: "$5,000", price: 29 },
+      { size: "$10,000", price: 49 },
+      { size: "$25,000", price: 99 },
+      { size: "$50,000", price: 179 },
       { size: "$100,000", price: 299 },
     ],
   },
