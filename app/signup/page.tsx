@@ -152,7 +152,7 @@ function SignupContent() {
           </Link>
 
           <p className="mt-2 text-xs text-gray-500 sm:text-sm">
-            Trade. Perform. Get Funded.
+            Learn. Test. Trade. Grow.
           </p>
         </div>
 
@@ -170,9 +170,7 @@ function SignupContent() {
             </h1>
 
             <p className="mx-auto mt-2 max-w-xs text-xs leading-5 text-gray-500 sm:text-sm">
-              Join Mivo Capital and start your
-              journey toward a funded trading
-              account.
+              Join the Mivo trading ecosystem and build a stronger process with the community.
             </p>
           </div>
 

@@ -1,0 +1,3 @@
+ALTER TABLE "CommunityPost"
+  ADD COLUMN IF NOT EXISTS "imageUrl" TEXT,
+  ADD COLUMN IF NOT EXISTS "tradingViewUrl" TEXT;

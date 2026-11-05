@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import Navbar from "../../components/Navbar";
 
 type Referral = {
   id: string;
@@ -72,7 +71,6 @@ export default function ReferralsPage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <Navbar />
 
       {/* HEADER */}
       <section className="border-b border-zinc-900">

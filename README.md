@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mivo Capital
 
-## Getting Started
+The launch workspace focuses on four areas:
 
-First, run the development server:
+- Backtesting Lab for historical market replay.
+- Trade Journal for manual entries and MT5 trade sync.
+- Community posts and discussions, including VIP Signals.
+- One shared Trader Chat.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Fund Management, Copy Trading, and Mivo Academy remain in the codebase for later releases. Their pages and APIs are hidden in this launch build. Real Estate is also hidden until it is included in a release scope.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Local development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env.local` and fill in the required values.
+3. Apply the pending database migrations with `npx prisma migrate deploy`.
+4. Start the app with `npm run dev` and open [http://localhost:3000](http://localhost:3000).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The production build runs `prisma generate && next build`.
 
-## Learn More
+## Environment variables
 
-To learn more about Next.js, take a look at the following resources:
+Required for the launch services:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `DATABASE_URL`: PostgreSQL connection string.
+- `JWT_SECRET`: private signing key for member and admin sessions. Set a strong, unique value in production.
+- `META_API_TOKEN`: MetaApi token for connecting and syncing MT5 accounts.
+- `CRON_SECRET`: secret used by Vercel's scheduled MT5 sync endpoint.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Optional integrations:
 
-## Deploy on Vercel
+- `TWELVE_DATA_API_KEY`: additional historical candle source; the app has other market data sources where available.
+- `OPENAI_API_KEY`: community post moderation. Without it, submitted posts stay private for admin review.
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: image and chat media uploads. Built-in chat content remains available without uploads.
+- `NEXT_PUBLIC_APP_URL`: public site URL used to generate account links.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Never commit `.env.local` or real secret values. The public Supabase CA used for verified TLS is stored at `prisma/certs/supabase-prod-ca-2021.crt`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Vercel deployment
+
+Add the required variables in the Vercel project settings for each environment. The Hobby-safe MT5 sync schedule runs once daily at 03:00 UTC; members can also request a sync from the MT5 Journal Sync page. See Vercel's [cron usage and pricing limits](https://vercel.com/docs/cron-jobs/usage-and-pricing).
+
+Apply database migrations before sending members to the deployment. With a Git-connected Vercel project, pushing the approved release to its production branch starts a deployment. The Git repository is `https://github.com/larytn/mivo-capital`.
+
+## Community review
+
+Member Market Analysis and Discussion posts are reviewed before publication. Clearly suitable posts may publish immediately when the moderation integration is configured. Posts requiring review stay private in the admin queue. External links in post text are blocked; members can add a validated TradingView chart link in its dedicated field.

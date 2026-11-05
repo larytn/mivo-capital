@@ -247,7 +247,7 @@ export default function LoginPage() {
           </Link>
 
           <p className="mt-2 text-xs text-gray-500 sm:text-sm">
-            Trade. Perform. Get Funded.
+            Learn. Test. Trade. Grow.
           </p>
         </div>
 

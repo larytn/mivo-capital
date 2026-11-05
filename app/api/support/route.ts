@@ -2,16 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 function getUserId(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
 
   if (!token) return null;
 
   const payload = verifyToken(token) as {
-    id: string;
+    id?: string;
+    userId?: string;
   } | null;
 
-  return payload?.id ?? null;
+  return payload?.id || payload?.userId || null;
 }
 
 // GET USER'S SUPPORT TICKETS

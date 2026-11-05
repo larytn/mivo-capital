@@ -3,10 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "mivo-secret-key"
-);
+import { getJwtSecret } from "@/lib/jwt-secret";
 
 export async function POST(request: Request) {
   try {
@@ -126,7 +123,7 @@ export async function POST(request: Request) {
       })
       .setIssuedAt()
       .setExpirationTime("7d")
-      .sign(JWT_SECRET);
+      .sign(new TextEncoder().encode(getJwtSecret()));
 
     const cookieStore = await cookies();
 

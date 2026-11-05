@@ -95,7 +95,7 @@ function VerifyEmailContent() {
           </Link>
 
           <p className="mt-2 text-sm text-gray-500">
-            Trade. Perform. Get Funded.
+            Learn. Test. Trade. Grow.
           </p>
         </div>
 

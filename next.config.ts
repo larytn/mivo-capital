@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  outputFileTracingIncludes: { "/*": ["./prisma/certs/supabase-prod-ca-2021.crt"] },
 };
 
 export default nextConfig;

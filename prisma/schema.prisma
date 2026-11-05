@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
@@ -12,271 +13,731 @@ model User {
   name  String
   email String @unique
 
-  // AUTH
   password     String?
   authProvider String  @default("EMAIL")
   googleId     String? @unique
+  role         String  @default("USER")
+  isVip        Boolean @default(false)
 
-  role      String   @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  emailVerified              Boolean   @default(false)
+  emailVerificationToken     String?   @unique
+  emailVerificationExpiresAt DateTime?
 
-  // PASSWORD RESET
   passwordResetToken     String?   @unique
   passwordResetExpiresAt DateTime?
 
-  // REFERRALS
   referralCode String? @unique
   referredById String?
 
   referredBy User?  @relation("UserReferrals", fields: [referredById], references: [id])
   referrals  User[] @relation("UserReferrals")
 
-  // RELATIONS
-  challenges     Challenge[]
-  payments       Payment[]
-  kyc            KYC?
-  withdrawals    Withdrawal[]
+  journalTrades JournalTrade[]
+  brokerConnection BrokerConnection?
+  copyTraderProfile CopyTraderProfile?
+  fundManagementApplication FundManagementApplication?
+  fundManagerProfile FundManagerProfile?
+  liveCopyAccounts CopyTradingAccount[]
+  liveCopyRelationships LiveCopyRelationship[] @relation("LiveCopyFollower")
+  copyTradingReviews CopyTradingAudit[] @relation("CopyTradingAdmin")
+  copyTradingLedgerEvents CopyTradingLedgerEvent[] @relation("CopyTradingLedgerAdmin")
+  fundInvestorMandates FundManagementMandate[] @relation("FundInvestor")
+  fundManagementActions FundManagementAudit[] @relation("FundManagementActor")
+  fundManagementAgreements FundManagementAgreement[] @relation("FundAgreementInvestor")
+  fundRedemptionRequests FundManagementRedemptionRequest[] @relation("FundRedemptionInvestor")
+  fundVerifiedStatements FundManagementStatement[] @relation("FundStatementVerifier")
+  fundVerifiedTrades FundManagementTrade[] @relation("FundTradeVerifier")
+  fundApprovedExpenses FundManagementExpense[] @relation("FundExpenseApprover")
+  fundRedemptionHandlers FundManagementRedemptionRequest[] @relation("FundRedemptionHandler")
+
+  communityPosts    CommunityPost[]
+  communityLikes    CommunityLike[]
+  communityComments CommunityComment[]
+  chatMessages ChatMessage[]
+  chatReactions ChatReaction[]
+  savedChatStickers ChatSavedSticker[]
+  propertyListings PropertyListing[] @relation("PropertyCreatedBy")
   supportTickets SupportTicket[]
+  ecosystemContent EcosystemContent[]
+  ecosystemContentReadStates EcosystemContentReadState[]
+  vipSignalsPublished VipSignal[]
 
-  emailVerified Boolean @default(false)
-
-  emailVerificationToken     String?   @unique
-  emailVerificationExpiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Challenge {
-  id      String @id @default(cuid())
-  account String
-  price   Float
-  type    String
-
-  // Product architecture
-  accountType String @default("TWO_STEP")
-  stage       String @default("PHASE_1")
-  status      String @default("PENDING")
-
-  createdAt  DateTime  @default(now())
-  userId     String
-  assignedAt DateTime?
-
-  // Trading account credentials
-  broker           String?
-  investorPassword String?
-  mt5Login         String?
-  mt5Password      String?
-  platform         String?
-  server           String?
-
-  // MetaApi integration
-  metaApiAccountId String? @unique
-
-  // Trading rules
-  dailyDrawdown    Float @default(5)
-  maxDrawdown      Float @default(10)
-  minimumTradeDays Int   @default(5)
-  profitTarget     Float @default(8)
-
-  // Account performance
-  startingBalance    Float @default(0)
-  currentBalance     Float @default(0)
-  currentEquity      Float @default(0)
-  profit             Float @default(0)
-  withdrawableProfit Float @default(0)
-  tradingDays        Int   @default(0)
-
-  // Breach / daily drawdown tracking
-  breachReason         String?
-  dailyStartingBalance Float?
-  dailyStartingEquity  Float?
-  lastDailyReset       DateTime?
-
-  // Relations
-  user        User              @relation(fields: [userId], references: [id])
-  payment     Payment?
-  withdrawals Withdrawal[]
-  trades      Trade[]
-  snapshots   AccountSnapshot[]
-}
-
-model Payment {
-  id                       String   @id @default(cuid())
-  txRef                    String   @unique
-  amount                   Float
-  currency                 String   @default("USD")
-  status                   String   @default("PENDING")
-  createdAt                DateTime @default(now())
-  userId                   String
-  challengeId              String?  @unique
-  accountSize              String
-  challengeType            String
-  flutterwaveTransactionId String?  @unique
-  nowPaymentsPaymentId     String?  @unique
-  paymentMethod            String?
-  promoCode                String?
-  updatedAt                DateTime @updatedAt
-
-  challenge Challenge? @relation(fields: [challengeId], references: [id])
-  user      User       @relation(fields: [userId], references: [id])
-}
-
-model KYC {
-  id String @id @default(cuid())
-
-  userId String @unique
+model JournalTrade {
+  id     String @id @default(cuid())
+  userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  fullName    String
-  dateOfBirth DateTime
-  nationality String
+  symbol    String
+  direction String
+  status    String @default("CLOSED")
 
-  idType   String
-  idNumber String
-
-  idFrontUrl     String
-  idBackUrl      String?
-  selfieUrl      String
-  proofOfAddress String?
-
-  status    String  @default("PENDING")
-  adminNote String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Withdrawal {
-  id String @id @default(cuid())
-
-  userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  challengeId String?
-  challenge   Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
-
-  amount Float
-  method String
-
-  accountName   String?
-  accountNumber String?
-  bankName      String?
-
-  cryptoNetwork String?
-  walletAddress String?
-
-  status    String  @default("PENDING")
-  adminNote String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Trade {
-  id          String @id @default(cuid())
-  challengeId String
-
-  ticket String
-  symbol String
-
-  type   String?
-  volume Float @default(0)
-
-  openPrice  Float?
-  closePrice Float?
-
+  entryPrice Float
+  exitPrice  Float?
   stopLoss   Float?
   takeProfit Float?
+  currentPrice Float?
+
+  quantity   Float?
+  riskAmount Float?
+  pnl        Float  @default(0)
+  fees       Float  @default(0)
 
   openedAt DateTime
   closedAt DateTime?
 
-  commission Float @default(0)
-  swap       Float @default(0)
-  profit     Float @default(0)
+  strategy      String?
+  notes         String?
+  screenshotUrl String?
 
-  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  source             String            @default("MANUAL")
+  externalId         String?
+  brokerConnectionId String?
+  brokerConnection   BrokerConnection? @relation(fields: [brokerConnectionId], references: [id], onDelete: SetNull)
+
+  isPublic Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, openedAt])
+  @@index([userId, isPublic])
+  @@index([userId, source, status, closedAt])
+  @@unique([userId, source, externalId])
+  @@index([brokerConnectionId])
+}
+
+model BrokerConnection {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerAccountId String   @unique
+  platform          String   @default("MT5")
+  server            String
+  status            String   @default("AWAITING_CREDENTIALS")
+  lastSyncedAt      DateTime?
+  journalTrades     JournalTrade[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+}
+
+model CommunityPost {
+  id       String @id @default(cuid())
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  title    String
+  content  String
+  category String @default("Market Analysis")
+  moderationStatus String @default("PENDING")
+  isPinned Boolean @default(false)
+  imageUrl String?
+  tradingViewUrl String?
+
+  likes    CommunityLike[]
+  comments CommunityComment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([challengeId, ticket])
-  @@index([challengeId])
-  @@index([openedAt])
+  @@index([createdAt])
+  @@index([category, createdAt])
+  @@index([moderationStatus, createdAt])
+  @@index([authorId])
 }
 
-model AccountSnapshot {
-  id          String @id @default(cuid())
-  challengeId String
-
-  balance Float
-  equity  Float
-
-  recordedAt DateTime @default(now())
-
-  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-
-  @@index([challengeId])
-  @@index([challengeId, recordedAt])
-}
-
-model PromoCode {
-  id String @id @default(cuid())
-
-  code String @unique
-
-  discountPercent Float
-
-  active Boolean @default(true)
-
-  maxUses   Int?
-  usedCount Int @default(0)
-
-  expiresAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model SupportTicket {
-  id         String   @id @default(cuid())
-  subject    String
-  message    String
-  status     String   @default("OPEN")
-  adminReply String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
+model CommunityLike {
+  id     String @id @default(cuid())
+  postId String
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
 }
 
-model TradingAccountPool {
-  id String @id @default(cuid())
+model CommunityComment {
+  id       String @id @default(cuid())
+  postId   String
+  authorId String
+  parentId String?
 
-  // MT5 credentials
-  mt5Login         String  @unique
-  mt5Password      String
-  investorPassword String?
-  server           String
-  broker           String
-  platform         String  @default("MT5")
+  content String
 
-  // Account configuration
-  accountSize Float
-  accountType String
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  // MetaApi connection
-  metaApiAccountId String? @unique
-
-  // Pool status
-  status String @default("AVAILABLE")
-
-  // Assignment
-  challengeId String?   @unique
-  assignedAt  DateTime?
+  parent  CommunityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies CommunityComment[] @relation("CommentReplies")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status, accountSize, accountType])
+  @@index([postId, createdAt])
+  @@index([authorId])
+  @@index([parentId])
+}
+model ChatMessage {
+  id        String   @id @default(cuid())
+  authorId  String
+  content   String
+  kind      String   @default("TEXT")
+  mediaKey  String?
+  mediaUrl  String?
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions ChatReaction[]
+
+  @@index([createdAt])
+}
+
+model ChatReaction {
+  id        String      @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId, createdAt])
+  @@index([userId])
+}
+
+model ChatSavedSticker {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  stickerKey String?
+  mediaUrl  String?
+  label     String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, createdAt])
+}
+
+model PropertyListing {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  location    String
+  price       Float
+  currency    String   @default("NGN")
+  propertyType String
+  bedrooms    Int?
+  bathrooms   Int?
+  imageUrl    String?
+  status      String   @default("PUBLISHED")
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   User     @relation("PropertyCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+}
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  message   String
+  status    String   @default("OPEN")
+  adminReply String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+model EcosystemContent {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  body        String
+  symbol      String?
+  direction   String?
+  entry       String?
+  stopLoss    String?
+  takeProfit  String?
+  published   Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([type, published, createdAt])
+}
+
+model EcosystemContentReadState {
+  id           String   @id @default(cuid())
+  userId       String
+  contentType  String
+  lastViewedAt DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentType])
+  @@index([contentType, lastViewedAt])
+}
+
+model VipSignal {
+  id          String   @id @default(cuid())
+  createdById String
+  symbol      String
+  side        String
+  timeframe   String
+  entryLow    Float
+  entryHigh   Float
+  stopLoss    Float
+  takeProfits Json
+  thesis      String   @db.Text
+  status      String   @default("ACTIVE")
+  outcomeNote String?  @db.Text
+  publishedAt DateTime @default(now())
+  closedAt    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([status, publishedAt])
+  @@index([createdById, publishedAt])
+}
+
+model CopyTraderProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  bio       String   @db.Text
+  strategy  String   @db.Text
+  markets   String
+  evidenceUrl String?
+  brokerReferralConfirmedAt DateTime?
+  brokerReferralUrl String?
+  brokerAccountLogin String?
+  brokerServer String?
+  ibVerifiedAt DateTime?
+  ibVerificationReference String?
+  status    String   @default("PENDING")
+  reviewFeedback String?
+  reviewedAt DateTime?
+  verifiedAt DateTime?
+  consentAt DateTime?
+  providerBrokerConnectionId String?
+  providerAccountId String?
+    providerRegion String?
+  copyFactoryStrategyId String? @unique
+  copierProfitShareRate Float @default(0.3)
+  profitSplitVersion Int @default(2)
+  copyFactoryStatus String @default("NOT_ENABLED")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditTrail CopyTradingAudit[]
+  liveFollowers LiveCopyRelationship[]
+    commissionLedger CopyTradingLedgerEntry[]
+
+  @@index([status, createdAt])
+}
+
+model CopyTradingAccount {
+  id                 String   @id @default(cuid())
+  userId             String
+  metaApiAccountId   String   @unique
+  region             String
+  server             String
+  loginHint          String
+  accountCurrency    String
+  balance            Float?
+  equity             Float?
+  tradeMode          String
+  marginMode         String
+  connectionStatus   String   @default("PENDING")
+  copyFactoryEnabled Boolean  @default(false)
+  consentAt          DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relationships      LiveCopyRelationship[]
+    commissionLedger   CopyTradingLedgerEntry[]
+
+  @@index([userId, createdAt])
+  @@index([connectionStatus, copyFactoryEnabled])
+}
+
+model LiveCopyRelationship {
+  id                 String   @id @default(cuid())
+  followerId         String
+  profileId          String
+  accountId          String
+  strategyId         String
+  status             String   @default("ACTIVE")
+  riskPercent        Float
+  copierShareRateAtStart Float
+  providerShareRateAtStart Float
+  mivoShareRateAtStart Float    @default(0.1)
+  profitSplitVersion Int    @default(2)
+  consentAt          DateTime
+  startedAt          DateTime @default(now())
+  stoppedAt          DateTime?
+  lastError          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  follower           User     @relation("LiveCopyFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  profile            CopyTraderProfile @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  account            CopyTradingAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+    commissionLedger   CopyTradingLedgerEntry[]
+
+  @@unique([followerId, profileId, accountId])
+  @@index([followerId, status])
+  @@index([profileId, status])
+  @@index([accountId, status])
+}
+
+model CopyTradingAudit {
+  id        String   @id @default(cuid())
+  adminId   String
+  profileId String
+  action    String
+  notes     String?
+  assessment Json?
+  createdAt DateTime @default(now())
+  admin     User     @relation("CopyTradingAdmin", fields: [adminId], references: [id], onDelete: Restrict)
+  profile   CopyTraderProfile @relation(fields: [profileId], references: [id], onDelete: Restrict)
+
+  @@index([profileId, createdAt])
+}
+
+model CopyTradingLedgerEntry {
+  id                    String   @id @default(cuid())
+  sourceTransactionId   String
+  sourceSubscriberId    String
+  strategyId            String
+  profileId             String
+  relationshipId        String?
+  accountId             String
+  transactionAt         DateTime
+  currency              String
+  symbol                String?
+  positionId            String?
+  profit                Float    @default(0)
+  improvement           Float    @default(0)
+  eligibleProfit        Float    @default(0)
+  copierProfitShareRate Float    @default(0.3)
+  mivoProfitShareRate   Float    @default(0.1)
+  copierShareAmount     Float    @default(0)
+  providerShareAmount   Float    @default(0)
+  providerCommission    Float    @default(0)
+  mivoShareAmount       Float    @default(0)
+  copyFactoryPlatformCommission Float @default(0)
+  collectionStatus      String   @default("PENDING")
+  collectedAt           DateTime?
+  collectionReference   String?
+  providerPayoutStatus  String   @default("PENDING")
+  providerPaidAt        DateTime?
+  providerPayoutReference String?
+  mivoReceiptStatus     String   @default("PENDING")
+  mivoReceivedAt        DateTime?
+  mivoReceiptReference  String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  profile      CopyTraderProfile       @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  relationship LiveCopyRelationship?   @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
+  account      CopyTradingAccount       @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  events       CopyTradingLedgerEvent[]
+
+  @@unique([sourceTransactionId, sourceSubscriberId])
+  @@index([transactionAt])
+  @@index([profileId, transactionAt])
+  @@index([collectionStatus, transactionAt])
+  @@index([providerPayoutStatus, transactionAt])
+  @@index([mivoReceiptStatus, transactionAt])
+}
+
+model CopyTradingLedgerEvent {
+  id        String   @id @default(cuid())
+  entryId   String
+  adminId   String
+  action    String
+  amount    Float
+  currency  String
+  reference String
+  createdAt DateTime @default(now())
+
+  entry CopyTradingLedgerEntry @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  admin User                   @relation("CopyTradingLedgerAdmin", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([entryId, createdAt])
+  @@index([adminId, createdAt])
+}
+
+model FundManagerProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  bio          String   @db.Text
+  experience   String   @db.Text
+  specialties  String
+  status       String   @default("PENDING")
+  reviewNote   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mandates     FundManagementMandate[]
+
+  @@index([status, createdAt])
+}
+
+model FundManagementApplication {
+  id                         String   @id @default(cuid())
+  investorId                 String   @unique
+  status                     String   @default("PENDING")
+  investmentExperience       String   @db.Text
+  investmentObjective        String   @db.Text
+  riskTolerance              String
+  lossCapacity               String
+  riskDisclosureVersion      String
+  riskDisclosureAcceptedAt   DateTime
+  identityVerificationStatus String   @default("PENDING")
+  suitabilityStatus          String   @default("PENDING")
+  verificationReference      String?
+  reviewNote                 String?
+  reviewedAt                 DateTime?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  investor                   User     @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  mandate                    FundManagementMandate?
+  redemptionRequests         FundManagementRedemptionRequest[]
+  auditTrail                 FundManagementAudit[]
+
+  @@index([status, createdAt])
+}
+
+model FundManagementMandate {
+  id                       String   @id @default(cuid())
+  applicationId            String   @unique
+  investorId               String
+  managerProfileId         String
+  environment              String   @default("DEMO")
+  status                   String   @default("PENDING_AGREEMENT")
+  currency                 String?
+  investorProfitShareRate  Decimal  @db.Decimal(8, 6)
+  mivoProfitShareRate      Decimal  @db.Decimal(8, 6)
+  settlementFrequency      String
+  maxDrawdownPercent       Decimal  @db.Decimal(8, 4)
+  maxLeverage              Decimal? @db.Decimal(8, 4)
+  highWaterMarkProfit      Decimal  @default(0) @db.Decimal(30, 10)
+  lossCarryForward         Decimal  @default(0) @db.Decimal(30, 10)
+  assignedAt               DateTime @default(now())
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  application              FundManagementApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  investor                 User     @relation("FundInvestor", fields: [investorId], references: [id], onDelete: Restrict)
+  managerProfile           FundManagerProfile @relation(fields: [managerProfileId], references: [id], onDelete: Restrict)
+  account                  FundManagementAccount?
+  agreements               FundManagementAgreement[]
+  statements               FundManagementStatement[]
+  expenses                 FundManagementExpense[]
+  settlements              FundManagementSettlement[]
+  trades                   FundManagementTrade[]
+  redemptionRequests       FundManagementRedemptionRequest[]
+  auditTrail               FundManagementAudit[]
+
+  @@index([investorId, status])
+  @@index([managerProfileId, status])
+  @@index([environment, status])
+}
+
+model FundManagementAgreement {
+  id                      String   @id @default(cuid())
+  mandateId               String
+  investorId              String
+  termsVersion            String
+  investorProfitShareRate Decimal  @db.Decimal(8, 6)
+  mivoProfitShareRate     Decimal  @db.Decimal(8, 6)
+  settlementFrequency     String
+  riskLimits              Json
+  status                  String   @default("PRESENTED")
+  presentedAt             DateTime @default(now())
+  acceptedAt              DateTime?
+  createdAt               DateTime @default(now())
+  mandate                 FundManagementMandate @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  investor                User     @relation("FundAgreementInvestor", fields: [investorId], references: [id], onDelete: Restrict)
+  settlements             FundManagementSettlement[] @relation("FundSettlementAgreement")
+
+  @@index([mandateId, presentedAt])
+  @@index([investorId, acceptedAt])
+}
+
+model FundManagementAccount {
+  id                    String   @id @default(cuid())
+  mandateId             String   @unique
+  environment           String   @default("DEMO")
+  status                String   @default("NOT_PROVISIONED")
+  brokerName            String?
+  maskedAccountReference String?
+  currency              String?
+  balance               Decimal? @db.Decimal(30, 10)
+  equity                Decimal? @db.Decimal(30, 10)
+  verifiedAt            DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  mandate               FundManagementMandate @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+
+  @@index([environment, status])
+}
+
+model FundManagementStatement {
+  id                String   @id @default(cuid())
+  mandateId         String
+  periodStart       DateTime
+  periodEnd         DateTime
+  currency          String
+  balance           Decimal? @db.Decimal(30, 10)
+  equity            Decimal? @db.Decimal(30, 10)
+  realizedPnl       Decimal  @db.Decimal(30, 10)
+  unrealizedPnl     Decimal  @db.Decimal(30, 10)
+  tradingCosts      Decimal  @default(0) @db.Decimal(30, 10)
+  maxDrawdownAmount Decimal? @db.Decimal(30, 10)
+  maxDrawdownPercent Decimal? @db.Decimal(8, 4)
+  sourceReference   String
+  status            String   @default("UNVERIFIED")
+  verifiedAt        DateTime?
+  verifiedById      String?
+  createdAt         DateTime @default(now())
+  mandate           FundManagementMandate @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  verifiedBy        User? @relation("FundStatementVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+  expenses          FundManagementExpense[]
+  settlement        FundManagementSettlement?
+
+  @@unique([mandateId, sourceReference])
+  @@index([mandateId, periodEnd])
+  @@index([status, periodEnd])
+}
+
+model FundManagementTrade {
+  id             String   @id @default(cuid())
+  mandateId      String
+  sourceReference String
+  symbol         String
+  direction      String
+  status         String   @default("UNVERIFIED")
+  volume         Decimal? @db.Decimal(20, 8)
+  entryPrice     Decimal? @db.Decimal(30, 10)
+  exitPrice      Decimal? @db.Decimal(30, 10)
+  realizedPnl    Decimal? @db.Decimal(30, 10)
+  commission     Decimal  @default(0) @db.Decimal(30, 10)
+  swap           Decimal  @default(0) @db.Decimal(30, 10)
+  openedAt       DateTime
+  closedAt       DateTime?
+  verifiedAt     DateTime?
+  verifiedById   String?
+  createdAt      DateTime @default(now())
+  mandate        FundManagementMandate @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  verifiedBy     User? @relation("FundTradeVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+
+  @@unique([mandateId, sourceReference])
+  @@index([mandateId, openedAt])
+  @@index([mandateId, status, openedAt])
+}
+
+model FundManagementExpense {
+  id          String   @id @default(cuid())
+  mandateId   String
+  statementId String
+  description String
+  amount      Decimal  @db.Decimal(30, 10)
+  currency    String
+  reference   String
+  status      String   @default("PENDING")
+  approvedAt  DateTime?
+  approvedById String?
+  createdAt   DateTime @default(now())
+  mandate     FundManagementMandate @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  statement   FundManagementStatement @relation(fields: [statementId], references: [id], onDelete: Restrict)
+  approvedBy  User? @relation("FundExpenseApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@unique([statementId, reference])
+  @@index([mandateId, status])
+}
+
+model FundManagementSettlement {
+  id                       String   @id @default(cuid())
+  mandateId                String
+  agreementId              String
+  statementId              String   @unique
+  periodStart              DateTime
+  periodEnd                DateTime
+  frequency                String
+  currency                 String
+  balanceSnapshot          Decimal? @db.Decimal(30, 10)
+  equitySnapshot           Decimal? @db.Decimal(30, 10)
+  realizedPnl              Decimal  @db.Decimal(30, 10)
+  unrealizedPnl            Decimal  @db.Decimal(30, 10)
+  tradingCosts             Decimal  @db.Decimal(30, 10)
+  approvedExpenses         Decimal  @db.Decimal(30, 10)
+  netRealizedProfit        Decimal  @db.Decimal(30, 10)
+  eligibleProfit           Decimal  @db.Decimal(30, 10)
+  highWaterMarkBefore      Decimal  @db.Decimal(30, 10)
+  highWaterMarkAfter       Decimal  @db.Decimal(30, 10)
+  lossCarryForwardBefore   Decimal  @db.Decimal(30, 10)
+  lossCarryForwardAfter    Decimal  @db.Decimal(30, 10)
+  mivoShareAmount          Decimal  @db.Decimal(30, 10)
+  investorShareAmount      Decimal  @db.Decimal(30, 10)
+  status                   String   @default("PREVIEW_ONLY")
+  createdAt                DateTime @default(now())
+  mandate                  FundManagementMandate @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  agreement                FundManagementAgreement @relation("FundSettlementAgreement", fields: [agreementId], references: [id], onDelete: Restrict)
+  statement                FundManagementStatement @relation(fields: [statementId], references: [id], onDelete: Restrict)
+
+  @@index([mandateId, periodEnd])
+  @@index([status, periodEnd])
+}
+
+model FundManagementRedemptionRequest {
+  id            String   @id @default(cuid())
+  mandateId     String
+  applicationId String
+  investorId    String
+  requestedAmount Decimal? @db.Decimal(30, 10)
+  currency      String?
+  message       String?
+  status        String   @default("DEMO_REQUESTED")
+  handledAt     DateTime?
+  handledById   String?
+  createdAt     DateTime @default(now())
+  mandate       FundManagementMandate @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  application   FundManagementApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  investor      User     @relation("FundRedemptionInvestor", fields: [investorId], references: [id], onDelete: Restrict)
+  handledBy     User? @relation("FundRedemptionHandler", fields: [handledById], references: [id], onDelete: Restrict)
+
+  @@index([investorId, status, createdAt])
+  @@index([mandateId, status])
+}
+
+model FundManagementAudit {
+  id            String   @id @default(cuid())
+  actorId       String
+  applicationId String?
+  mandateId     String?
+  action        String
+  details       Json?
+  createdAt     DateTime @default(now())
+  actor         User     @relation("FundManagementActor", fields: [actorId], references: [id], onDelete: Restrict)
+  application   FundManagementApplication? @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  mandate       FundManagementMandate? @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt])
+  @@index([mandateId, createdAt])
+  @@index([actorId, createdAt])
 }

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyToken } from "@/lib/auth";
+import { getAuthenticatedUserId } from "@/lib/api-auth";
 
 async function generateUniqueReferralCode() {
   while (true) {
@@ -21,31 +21,19 @@ async function generateUniqueReferralCode() {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const token = request.cookies.get("token")?.value;
-
-    if (!token) {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const payload = verifyToken(token) as {
-      id: string;
-    } | null;
-
-    if (!payload) {
-      return NextResponse.json(
-        { error: "Invalid token" },
-        { status: 401 }
-      );
-    }
-
     let user = await prisma.user.findUnique({
       where: {
-        id: payload.id,
+        id: userId,
       },
       select: {
         id: true,
@@ -77,7 +65,7 @@ export async function GET(request: NextRequest) {
 
       user = await prisma.user.update({
         where: {
-          id: payload.id,
+          id: userId,
         },
         data: {
           referralCode,

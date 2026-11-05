@@ -1,0 +1,43 @@
+export const CHAT_REACTION_EMOJIS = [
+  "👍", "👎", "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "❣️",
+  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "😊", "😇", "🙂", "🙃", "😉", "😍", "🥰", "😘", "😋", "😜", "🤪", "🤗", "🤔", "🫡", "🤫", "🤭", "🫠", "😬", "😎", "🤓", "🥳", "🥺", "😢", "😭", "😤", "😡", "🤯", "🥱", "😴", "🙄", "🤷",
+  "🙏", "👏", "🙌", "👐", "🤲", "💪", "🤝", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "👋", "✋", "🖐️", "🫶", "🫰", "👀",
+  "🔥", "💯", "✅", "⭐", "🌟", "✨", "🎉", "🎊", "🏆", "🎯", "🚀", "💰", "💸", "📈", "📉", "🐂", "🐻", "💎", "👑", "🌈", "🍀", "☕", "💡",
+] as const;
+
+export const CHAT_STICKERS = [
+  { key: "bull", emoji: "🐂", label: "Bullish" },
+  { key: "bear", emoji: "🐻", label: "Bearish" },
+  { key: "rocket", emoji: "🚀", label: "To the moon" },
+  { key: "diamond", emoji: "💎", label: "Diamond hands" },
+  { key: "trophy", emoji: "🏆", label: "Winner" },
+  { key: "fire", emoji: "🔥", label: "On fire" },
+  { key: "eyes", emoji: "👀", label: "Watching closely" },
+  { key: "chart", emoji: "📈", label: "Chart time" },
+  { key: "money", emoji: "💸", label: "Profit" },
+  { key: "goat", emoji: "🐐", label: "Legendary" },
+  { key: "pray", emoji: "🙏", label: "Good luck" },
+  { key: "wave", emoji: "👋", label: "Hello traders" },
+  { key: "laugh", emoji: "😂", label: "Can't stop laughing" },
+  { key: "mindblown", emoji: "🤯", label: "Mind blown" },
+  { key: "clap", emoji: "👏", label: "Well played" },
+  { key: "party", emoji: "🥳", label: "Let's celebrate" },
+  { key: "love", emoji: "😍", label: "Love this setup" },
+  { key: "strong", emoji: "💪", label: "Stay strong" },
+  { key: "sleep", emoji: "😴", label: "Waiting for setup" },
+  { key: "thinking", emoji: "🤔", label: "Thinking" },
+  { key: "cry", emoji: "😭", label: "That loss hurts" },
+  { key: "salute", emoji: "🫡", label: "Respect" },
+  { key: "coffee", emoji: "☕", label: "Coffee and charts" },
+  { key: "warning", emoji: "⚠️", label: "Trade carefully" },
+  { key: "check", emoji: "✅", label: "Plan followed" },
+  { key: "focus", emoji: "🎯", label: "Locked in" },
+  { key: "peace", emoji: "✌️", label: "Peace" },
+  { key: "heart", emoji: "❤️", label: "Much love" },
+  { key: "cash", emoji: "🤑", label: "Cash flow" },
+  { key: "shrug", emoji: "🤷", label: "It happens" },
+  { key: "cool", emoji: "😎", label: "Cool as ever" },
+  { key: "party_popper", emoji: "🎉", label: "Big win" },
+] as const;
+
+export type ChatStickerDefinition = (typeof CHAT_STICKERS)[number];

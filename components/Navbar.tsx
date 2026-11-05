@@ -4,323 +4,48 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+const links = [
+  ["Community", "/community"],
+  ["Trader Chat", "/chat"],
+  ["Announcements", "/announcements"],
+  ["Journal", "/journal"],
+  ["Backtesting", "/backtesting"],
+  ["MT5 Journal Sync", "/automation"],
+];
+
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-
   const [loggedIn, setLoggedIn] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    async function checkAuth() {
-      try {
-        const response = await fetch("/api/my-challenges", {
-          credentials: "include",
-        });
-
-        setLoggedIn(response.status !== 401);
-      } catch {
-        setLoggedIn(false);
-      }
-    }
-
-    checkAuth();
+    let active = true;
+    fetch("/api/profile", { cache: "no-store" })
+      .then((response) => { if (active) setLoggedIn(response.ok); })
+      .catch(() => { if (active) setLoggedIn(false); });
+    return () => { active = false; };
   }, []);
 
-  // Close mobile menu whenever the route changes
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
-  async function handleLogout() {
-    try {
-      await fetch("/api/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-    } finally {
-      setLoggedIn(false);
-      setMenuOpen(false);
-
-      router.push("/login");
-      router.refresh();
-    }
-  }
-
-  function mobileLinkClass(path: string) {
-    const active =
-      pathname === path ||
-      (path !== "/" && pathname.startsWith(`${path}/`));
-
-    return `block rounded-xl px-4 py-3 text-sm font-semibold transition ${
-      active
-        ? "bg-green-500/10 text-green-500"
-        : "text-gray-300 hover:bg-zinc-900 hover:text-white"
-    }`;
+  async function logout() {
+    await fetch("/api/logout", { method: "POST" }).catch(() => undefined);
+    setLoggedIn(false);
+    router.push("/login");
+    router.refresh();
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-zinc-800 bg-black/95 backdrop-blur">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-6">
-        {/* LOGO */}
-        <Link
-          href="/"
-          className="shrink-0 text-xl font-black tracking-tight text-green-500 sm:text-2xl"
-        >
-          Mivo Capital
-        </Link>
-
-        {/* DESKTOP NAV */}
-        <nav className="hidden items-center gap-7 lg:flex">
-          <Link
-            href="/"
-            className="text-sm font-medium text-white hover:text-green-500"
-          >
-            Home
-          </Link>
-
-          <Link
-            href="/#funding-programs"
-            className="text-sm font-medium text-gray-300 hover:text-green-500"
-          >
-            Funding Programs
-          </Link>
-
-          <Link
-            href="/#trading-rules"
-            className="text-sm font-medium text-gray-300 hover:text-green-500"
-          >
-            Trading Rules
-          </Link>
-
-          <Link
-            href="/#how-it-works"
-            className="text-sm font-medium text-gray-300 hover:text-green-500"
-          >
-            How It Works
-          </Link>
-
-          <Link
-            href="/#faq"
-            className="text-sm font-medium text-gray-300 hover:text-green-500"
-          >
-            FAQ
-          </Link>
-
-          {loggedIn ? (
-            <>
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-gray-300 hover:text-green-500"
-              >
-                Dashboard
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="text-sm font-medium text-red-400 hover:text-red-300"
-              >
-                Logout
-              </button>
-
-              <Link
-                href="/challenges"
-                className="rounded-xl bg-green-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-green-400"
-              >
-                Buy Challenge
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/signup"
-                className="text-sm font-medium text-gray-300 hover:text-green-500"
-              >
-                Sign Up
-              </Link>
-
-              <Link
-                href="/login"
-                className="text-sm font-medium text-gray-300 hover:text-green-500"
-              >
-                Login
-              </Link>
-
-              <Link
-                href="/challenges"
-                className="rounded-xl bg-green-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-green-400"
-              >
-                Get Funded
-              </Link>
-            </>
-          )}
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 text-foreground backdrop-blur">
+      <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
+        <Link href="/" className="shrink-0 text-lg font-black tracking-wide">MIVO<span className="text-muted">. CAPITAL</span></Link>
+        <nav className="hidden items-center gap-5 lg:flex">
+          <Link href="/" className="text-sm text-muted hover:text-foreground">Home</Link>
+          {links.map(([label, href]) => <Link key={href} href={href} className={`text-sm hover:text-foreground ${pathname === href ? "font-semibold text-foreground" : "text-muted"}`}>{label}</Link>)}
+          {loggedIn ? <><Link href="/dashboard" className="text-sm font-semibold">Workspace</Link><button onClick={logout} className="text-sm text-muted hover:text-foreground">Log out</button></> : <><Link href="/login" className="text-sm text-muted">Sign in</Link><Link href="/signup" className="rounded-lg bg-foreground px-4 py-2 text-sm font-bold text-background">Join Mivo</Link></>}
         </nav>
-
-        {/* MOBILE HAMBURGER */}
-        <button
-          type="button"
-          onClick={() => setMenuOpen((current) => !current)}
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen}
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-white transition hover:border-green-500 lg:hidden"
-        >
-          {menuOpen ? (
-            <span className="text-2xl leading-none">×</span>
-          ) : (
-            <span className="text-2xl leading-none">☰</span>
-          )}
-        </button>
+        <button type="button" onClick={() => setMenuOpen((open) => !open)} aria-label="Toggle navigation" aria-expanded={menuOpen} className="rounded-lg border border-border px-3 py-2 lg:hidden">{menuOpen ? "Close" : "Menu"}</button>
       </div>
-
-      {/* MOBILE MENU */}
-      {menuOpen && (
-        <div className="border-t border-zinc-800 bg-black lg:hidden">
-          <div className="mx-auto max-w-7xl px-5 py-5 sm:px-6">
-            {loggedIn ? (
-              <>
-                {/* TRADER MENU */}
-                <p className="mb-3 px-4 text-xs font-bold uppercase tracking-[0.18em] text-green-500">
-                  Trader Menu
-                </p>
-
-                <div className="space-y-1">
-                  <Link
-                    href="/dashboard"
-                    className={mobileLinkClass("/dashboard")}
-                  >
-                    Dashboard
-                  </Link>
-
-                  <Link
-                    href="/accounts"
-                    className={mobileLinkClass("/accounts")}
-                  >
-                    Accounts
-                  </Link>
-
-                  <Link
-                    href="/transactions"
-                    className={mobileLinkClass("/transactions")}
-                  >
-                    Transactions
-                  </Link>
-
-                  <Link
-                    href="/withdrawals"
-                    className={mobileLinkClass("/withdrawals")}
-                  >
-                    Withdrawals
-                  </Link>
-
-                  <Link
-                    href="/profile"
-                    className={mobileLinkClass("/profile")}
-                  >
-                    Profile
-                  </Link>
-
-                  <Link
-                    href="/referrals"
-                    className={mobileLinkClass("/referrals")}
-                  >
-                    Referrals
-                  </Link>
-
-                  <Link
-                    href="/support"
-                    className={mobileLinkClass("/support")}
-                  >
-                    Support
-                  </Link>
-                </div>
-
-                <div className="my-5 border-t border-zinc-800" />
-
-                <Link
-                  href="/challenges"
-                  className="block rounded-xl bg-green-500 px-5 py-4 text-center font-bold text-black transition hover:bg-green-400"
-                >
-                  Buy Challenge
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="mt-3 w-full rounded-xl border border-red-500/30 px-5 py-4 text-center font-semibold text-red-400 transition hover:bg-red-500/10"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                {/* PUBLIC MENU */}
-                <div className="space-y-1">
-                  <Link
-                    href="/"
-                    className={mobileLinkClass("/")}
-                  >
-                    Home
-                  </Link>
-
-                  <Link
-                    href="/#funding-programs"
-                    className="block rounded-xl px-4 py-3 text-sm font-semibold text-gray-300 transition hover:bg-zinc-900 hover:text-white"
-                  >
-                    Funding Programs
-                  </Link>
-
-                  <Link
-                    href="/#trading-rules"
-                    className="block rounded-xl px-4 py-3 text-sm font-semibold text-gray-300 transition hover:bg-zinc-900 hover:text-white"
-                  >
-                    Trading Rules
-                  </Link>
-
-                  <Link
-                    href="/#how-it-works"
-                    className="block rounded-xl px-4 py-3 text-sm font-semibold text-gray-300 transition hover:bg-zinc-900 hover:text-white"
-                  >
-                    How It Works
-                  </Link>
-
-                  <Link
-                    href="/#faq"
-                    className="block rounded-xl px-4 py-3 text-sm font-semibold text-gray-300 transition hover:bg-zinc-900 hover:text-white"
-                  >
-                    FAQ
-                  </Link>
-                </div>
-
-                <div className="my-5 border-t border-zinc-800" />
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Link
-                    href="/login"
-                    className="rounded-xl border border-zinc-700 px-4 py-3 text-center text-sm font-bold text-white"
-                  >
-                    Login
-                  </Link>
-
-                  <Link
-                    href="/signup"
-                    className="rounded-xl border border-zinc-700 px-4 py-3 text-center text-sm font-bold text-white"
-                  >
-                    Sign Up
-                  </Link>
-                </div>
-
-                <Link
-                  href="/challenges"
-                  className="mt-3 block rounded-xl bg-green-500 px-5 py-4 text-center font-bold text-black transition hover:bg-green-400"
-                >
-                  Get Funded
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {menuOpen && <nav className="grid gap-1 border-t border-border px-5 py-3 lg:hidden">{links.map(([label, href]) => <Link key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface hover:text-foreground">{label}</Link>)}{loggedIn ? <><Link href="/dashboard" onClick={() => setMenuOpen(false)} className="px-3 py-2 text-sm">Workspace</Link><button onClick={logout} className="px-3 py-2 text-left text-sm">Log out</button></> : <><Link href="/login" onClick={() => setMenuOpen(false)} className="px-3 py-2 text-sm">Sign in</Link><Link href="/signup" onClick={() => setMenuOpen(false)} className="px-3 py-2 text-sm">Create account</Link></>}</nav>}
     </header>
   );
 }

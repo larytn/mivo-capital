@@ -1,1028 +1,583 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-type Challenge = {
+type Trade = {
   id: string;
-  account: string;
-  price: number;
-  type: string;
-  accountType: string;
-  stage: string;
+  symbol: string;
+  direction: string;
   status: string;
-  startingBalance: number;
-  currentBalance: number;
-  currentEquity: number;
-  profit: number;
-  withdrawableProfit: number;
-  mt5Login: string | null;
+  pnl: number | string;
+  fees: number | string;
+  openedAt: string;
+  closedAt: string | null;
 };
 
-const statusMap: Record<string, string> = {
-  PENDING: "Pending",
-  ACTIVE: "Active",
-  PASSED: "Passed",
-  FAILED: "Failed",
+type CommunityPost = {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  createdAt: string;
+  author: { name: string };
+  likes?: Array<unknown>;
+  comments?: Array<unknown>;
+  likesCount?: number;
+  commentsCount?: number;
 };
 
-const statusStyles: Record<string, string> = {
-  PENDING: "bg-yellow-500/10 text-yellow-400",
-  ACTIVE: "bg-green-500/10 text-green-400",
-  PASSED: "bg-blue-500/10 text-blue-400",
-  FAILED: "bg-red-500/10 text-red-400",
-};
+type Range = "1W" | "1M" | "3M" | "ALL";
 
-function money(value: number | undefined | null) {
-  const amount = Number(value ?? 0);
+const ranges: { label: Range; duration: number | null }[] = [
+  { label: "1W", duration: 7 * 24 * 60 * 60 * 1000 },
+  { label: "1M", duration: 30 * 24 * 60 * 60 * 1000 },
+  { label: "3M", duration: 90 * 24 * 60 * 60 * 1000 },
+  { label: "ALL", duration: null },
+];
 
-  return `$${amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
+const money = (value: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
     maximumFractionDigits: 2,
-  })}`;
+  }).format(value);
+
+const netResult = (trade: Trade) =>
+  Number(trade.pnl || 0) - Number(trade.fees || 0);
+
+function shortDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
 
-function getStage(challenge: Challenge) {
-  switch (challenge.stage) {
-    case "PHASE_1":
-      return "Phase 1";
-    case "PHASE_2":
-      return "Phase 2";
-    case "PHASE_3":
-      return "Phase 3";
-    case "FUNDED":
-      return "Funded";
-    default:
-      return challenge.stage || "Unknown";
-  }
+function timeAgo(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  const days = Math.floor(hours / 24);
+  if (days < 7) return days + "d ago";
+  return shortDate(value);
 }
 
-function getAccountType(challenge: Challenge) {
-  switch (challenge.accountType) {
-    case "THREE_STEP":
-      return "Three-Step";
-    case "ONE_STEP":
-      return "One-Step";
-    case "TWO_STEP":
-      return "Two-Step";
-    case "INSTANT":
-      return "Instant Funding";
-    default:
-      return challenge.type;
+function EquityChart({ trades }: { trades: Trade[] }) {
+  const points = useMemo(() => {
+    const ordered = [...trades].sort(
+      (a, b) =>
+        new Date(a.closedAt || a.openedAt).getTime() -
+        new Date(b.closedAt || b.openedAt).getTime(),
+    );
+    return ordered.reduce(
+      (curve, trade) => {
+        const previous = curve[curve.length - 1].value;
+        return curve.concat({
+          date: trade.closedAt || trade.openedAt,
+          value: previous + netResult(trade),
+        });
+      },
+      [{ date: "", value: 0 }],
+    );
+  }, [trades]);
+
+  if (trades.length === 0) {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center px-5 py-10 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/20 bg-accent/10 text-xl text-accent">
+          ↗
+        </span>
+        <h3 className="mt-4 text-lg font-semibold">Your trading record starts here</h3>
+        <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+          Log your first trade or replay a setup. Your own results will build this performance view.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/journal"
+            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground transition hover:bg-accent/90"
+          >
+            Log a trade
+          </Link>
+          <Link
+            href="/backtesting"
+            className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold transition hover:bg-surface-raised"
+          >
+            Start a backtest
+          </Link>
+        </div>
+      </div>
+    );
   }
+
+  const width = 760;
+  const height = 232;
+  const inset = 18;
+  const values = points.map((point) => point.value);
+  const minimum = Math.min(0, ...values);
+  const maximum = Math.max(0, ...values);
+  const valueRange = maximum - minimum || 1;
+  const plotPoints = points.map((point, index) => {
+    const x =
+      inset +
+      (index / Math.max(points.length - 1, 1)) * (width - inset * 2);
+    const y =
+      height -
+      inset -
+      ((point.value - minimum) / valueRange) * (height - inset * 2);
+    return { x, y, value: point.value };
+  });
+  const linePath = plotPoints
+    .map((point, index) => (index === 0 ? "M" : "L") + point.x + " " + point.y)
+    .join(" ");
+  const fillPath =
+    linePath +
+    " L " +
+    plotPoints[plotPoints.length - 1].x +
+    " " +
+    (height - inset) +
+    " L " +
+    inset +
+    " " +
+    (height - inset) +
+    " Z";
+  const zeroY = height - inset - ((0 - minimum) / valueRange) * (height - inset * 2);
+  const finalValue = values[values.length - 1];
+  const lineColor = finalValue >= 0 ? "#34d399" : "#fb7185";
+
+  return (
+    <div className="px-4 pb-4 pt-2 sm:px-6">
+      <div className="flex items-center justify-between text-xs text-muted">
+        <span>{shortDate(points[1].date)}</span>
+        <span>{shortDate(points[points.length - 1].date)}</span>
+      </div>
+      <svg
+        className="mt-2 h-52 w-full overflow-visible"
+        viewBox={"0 0 " + width + " " + height}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="Cumulative net trading performance from journaled trades"
+      >
+        <defs>
+          <linearGradient id="equity-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.22" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <line
+          x1={inset}
+          x2={width - inset}
+          y1={zeroY}
+          y2={zeroY}
+          stroke="currentColor"
+          strokeOpacity="0.13"
+          strokeDasharray="4 6"
+        />
+        <path d={fillPath} fill="url(#equity-fill)" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke={lineColor}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        {plotPoints.length > 1 && (
+          <circle
+            cx={plotPoints[plotPoints.length - 1].x}
+            cy={plotPoints[plotPoints.length - 1].y}
+            r="5"
+            fill={lineColor}
+            stroke="var(--background)"
+            strokeWidth="3"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+      </svg>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const [kycStatus, setKycStatus] = useState<string | null>(
-    null
-  );
-
-  const [referralCode, setReferralCode] = useState("");
-  const [totalReferrals, setTotalReferrals] = useState(0);
-
-  const fetchChallenges = async () => {
-    try {
-      setError("");
-
-      const response = await fetch("/api/my-challenges", {
-        cache: "no-store",
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/login";
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error("Failed to load trading accounts.");
-      }
-
-      const data = await response.json();
-
-      setChallenges(data);
-    } catch (error) {
-      console.error("Dashboard error:", error);
-
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load dashboard."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchKYC = async () => {
-    try {
-      const response = await fetch("/api/kyc", {
-        cache: "no-store",
-      });
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-
-      setKycStatus(data.kyc?.status ?? null);
-    } catch {
-      setKycStatus(null);
-    }
-  };
-
-  const fetchReferrals = async () => {
-    try {
-      const response = await fetch("/api/referrals", {
-        cache: "no-store",
-      });
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-
-      setReferralCode(data.referralCode || "");
-      setTotalReferrals(data.totalReferrals || 0);
-    } catch (error) {
-      console.error("Failed to load referral stats:", error);
-    }
-  };
-
-  const refreshDashboard = async () => {
-    try {
-      setRefreshing(true);
-
-      await Promise.all([
-        fetchChallenges(),
-        fetchKYC(),
-        fetchReferrals(),
-      ]);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  const [userName, setUserName] = useState("");
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [dataWarnings, setDataWarnings] = useState<string[]>([]);
+  const [range, setRange] = useState<Range>("ALL");
+  const [referenceTime, setReferenceTime] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchChallenges();
-    fetchKYC();
-    fetchReferrals();
+    let active = true;
 
-    const interval = setInterval(() => {
-      fetchChallenges();
-    }, 15000);
 
-    return () => clearInterval(interval);
+    async function loadDashboard() {
+      try {
+        const response = await fetch("/api/dashboard", { cache: "no-store" });
+        const data = await response.json().catch(() => null);
+
+        if (response.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!active) return;
+        if (!response.ok) return;
+
+        setDataWarnings(Array.isArray(data?.errors)
+          ? data.errors.filter((item: unknown): item is string => typeof item === "string")
+          : []);
+        const name = data?.profile?.name;
+        if (typeof name === "string") setUserName(name.trim());
+        setTrades(Array.isArray(data?.trades) ? data.trades : []);
+        setPosts(Array.isArray(data?.posts) ? data.posts : []);
+      } catch {
+        // Keep transient activity failures from adding a warning to the overview.
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadDashboard();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const logout = async () => {
-    await fetch("/api/logout", {
-      method: "POST",
-    });
+  const closedTrades = useMemo(
+    () =>
+      trades
+        .filter((trade) => trade.status === "CLOSED")
+        .sort(
+          (a, b) =>
+            new Date(a.closedAt || a.openedAt).getTime() -
+            new Date(b.closedAt || b.openedAt).getTime(),
+        ),
+    [trades],
+  );
 
-    window.location.href = "/login";
-  };
-
-  const statistics = useMemo(() => {
-    const totalAccounts = challenges.length;
-
-    const activeAccounts = challenges.filter(
-      (challenge) => challenge.status === "ACTIVE"
-    ).length;
-
-    const fundedAccounts = challenges.filter(
-      (challenge) =>
-        challenge.stage === "FUNDED" &&
-        challenge.status === "ACTIVE"
-    ).length;
-
-    const totalProfit = challenges.reduce(
-      (total, challenge) =>
-        total + Number(challenge.profit || 0),
-      0
+  const selectedTrades = useMemo(() => {
+    const duration = ranges.find((item) => item.label === range)?.duration;
+    if (duration === null || duration === undefined || referenceTime === null) {
+      return closedTrades;
+    }
+    const cutoff = referenceTime - duration;
+    return closedTrades.filter(
+      (trade) =>
+        new Date(trade.closedAt || trade.openedAt).getTime() >= cutoff,
     );
+  }, [closedTrades, range, referenceTime]);
 
-    const totalWithdrawable = challenges.reduce(
-      (total, challenge) =>
-        total + Number(challenge.withdrawableProfit || 0),
-      0
-    );
-
+  const stats = useMemo(() => {
+    const results = selectedTrades.map(netResult);
+    const gains = results.reduce((sum, value) => sum + Math.max(value, 0), 0);
+    const losses = results.reduce((sum, value) => sum + Math.abs(Math.min(value, 0)), 0);
+    const wins = results.filter((value) => value > 0).length;
+    const net = results.reduce((sum, value) => sum + value, 0);
     return {
-      totalAccounts,
-      activeAccounts,
-      fundedAccounts,
-      totalProfit,
-      totalWithdrawable,
+      net,
+      trades: results.length,
+      wins,
+      losses: results.length - wins,
+      winRate: results.length ? (wins / results.length) * 100 : null,
+      profitFactor:
+        results.length === 0
+          ? null
+          : losses === 0
+            ? gains > 0
+              ? Infinity
+              : 0
+            : gains / losses,
     };
-  }, [challenges]);
+  }, [selectedTrades]);
 
-  const featuredAccount =
-    challenges.find(
-      (challenge) =>
-        challenge.status === "ACTIVE" &&
-        challenge.stage === "FUNDED"
-    ) ??
-    challenges.find(
-      (challenge) => challenge.status === "ACTIVE"
-    ) ??
-    challenges[0];
+  const recentTrades = useMemo(
+    () =>
+      [...trades]
+        .sort(
+          (a, b) =>
+            new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime(),
+        )
+        .slice(0, 5),
+    [trades],
+  );
+
+  if (loading) {
+    return (
+      <main className="flex min-h-[70vh] items-center justify-center px-5 text-sm text-muted">
+        Preparing your trading desk…
+      </main>
+    );
+  }
+
+  const noClosedTrades = closedTrades.length === 0;
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* MOBILE TOP BAR */}
-      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-zinc-800 bg-black/95 px-5 backdrop-blur lg:hidden">
-        <Link
-          href="/dashboard"
-          className="text-xl font-black text-green-500"
-        >
-          Mivo Capital
-        </Link>
-
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(true)}
-          aria-label="Open menu"
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 text-2xl text-white"
-        >
-          ☰
-        </button>
-      </header>
-
-      {/* MOBILE OVERLAY */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/70 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* MOBILE DRAWER */}
-      <aside
-        className={`fixed right-0 top-0 z-[70] h-full w-[82%] max-w-[320px] border-l border-zinc-800 bg-zinc-950 p-6 transition-transform duration-300 lg:hidden ${
-          mobileMenuOpen
-            ? "translate-x-0"
-            : "translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-5">
-          <h2 className="text-xl font-black text-green-500">
-            Mivo Capital
-          </h2>
-
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-label="Close menu"
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 text-2xl"
-          >
-            ×
-          </button>
-        </div>
-
-        <nav className="mt-6 space-y-1">
-          <MobileMenuLink
-            href="/dashboard"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Dashboard
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/challenges"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Buy Challenge
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/accounts"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Accounts
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/withdrawals"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Withdrawals
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/kyc"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            KYC Verification
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/referrals"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Referrals
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/transactions"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Transactions
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/support"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Support
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/profile"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Profile
-          </MobileMenuLink>
-
-          <MobileMenuLink
-            href="/settings"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            ⚙️ Settings
-          </MobileMenuLink>
-
-          <div className="my-4 border-t border-zinc-800" />
-
-          <button
-            type="button"
-            onClick={logout}
-            className="w-full rounded-xl px-4 py-3 text-left font-semibold text-red-400 transition hover:bg-red-500/10"
-          >
-            Logout
-          </button>
-        </nav>
-      </aside>
-
-      <div className="flex">
-        {/* DESKTOP SIDEBAR */}
-        <aside className="hidden min-h-screen w-64 shrink-0 border-r border-zinc-800 bg-zinc-950 p-6 lg:block">
-          <h2 className="mb-10 text-3xl font-bold text-green-500">
-            Mivo Capital
-          </h2>
-
-          <nav className="space-y-5">
-            <Link
-              href="/dashboard"
-              className="block font-medium text-green-400"
-            >
-              Dashboard
-            </Link>
-
-            <Link
-              href="/challenges"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              Buy Challenge
-            </Link>
-
-            <Link
-              href="/accounts"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              Accounts
-            </Link>
-
-            <Link
-              href="/withdrawals"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              Withdrawals
-            </Link>
-
-            <Link
-              href="/kyc"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              KYC Verification
-            </Link>
-
-            <Link
-              href="/referrals"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              Referrals
-            </Link>
-
-            <Link
-              href="/transactions"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              Transactions
-            </Link>
-
-            <Link
-              href="/support"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              Support
-            </Link>
-
-            <Link
-              href="/profile"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              Profile
-            </Link>
-
-            <Link
-              href="/settings"
-              className="block text-gray-300 transition hover:text-green-400"
-            >
-              ⚙️ Settings
-            </Link>
-
-            <button
-              type="button"
-              onClick={logout}
-              className="text-red-500 transition hover:text-red-400"
-            >
-              Logout
-            </button>
-          </nav>
-        </aside>
-
-        {/* MAIN */}
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-5 md:px-8 lg:p-10">
-          {/* HEADER */}
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-green-500 md:text-4xl">
-                Dashboard
-              </h1>
-
-              <p className="mt-2 text-sm text-gray-400 sm:text-base">
-                Welcome back to Mivo Capital
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-[1480px] px-5 pb-14 pt-8 sm:px-8 sm:pt-10">
+        <section className="relative overflow-hidden rounded-[28px] border border-accent/20 bg-[radial-gradient(ellipse_at_82%_0%,rgba(83,223,201,0.18),transparent_40%),radial-gradient(ellipse_at_8%_100%,rgba(255,189,105,0.08),transparent_45%),linear-gradient(135deg,var(--surface),var(--background))] px-6 py-7 sm:px-9 sm:py-9">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-accent/10" />
+          <div className="pointer-events-none absolute -right-4 -top-8 h-44 w-44 rounded-full border border-accent/10" />
+          <div className="relative flex flex-col justify-between gap-8 xl:flex-row xl:items-end">
+            <div className="max-w-3xl">
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-accent">
+                Mivo Capital <span className="mx-2 text-muted">/</span> Trading desk
               </p>
+              <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight sm:text-5xl">
+                {userName
+                  ? "Welcome back, " + userName + "."
+                  : "Build your edge, one session at a time."}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
+                Review your decisions, test your setups, and exchange ideas with other traders.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/backtesting"
+                  className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-accent-foreground transition hover:bg-accent/90"
+                >
+                  Test a strategy <span aria-hidden="true">↗</span>
+                </Link>
+                <Link
+                  href="/journal"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background/40 px-5 py-3 text-sm font-semibold transition hover:bg-surface-raised"
+                >
+                  Open your journal <span aria-hidden="true">→</span>
+                </Link>
+              </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:flex">
-              <Link
-                href="/challenges"
-                className="rounded-lg border border-zinc-700 px-4 py-2.5 text-center text-sm font-semibold transition hover:border-green-500 hover:text-green-400 sm:px-5 sm:text-base"
-              >
-                Buy Challenge
-              </Link>
-
-              <button
-                onClick={refreshDashboard}
-                disabled={refreshing}
-                className="rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-green-400 disabled:opacity-60 sm:px-5 sm:text-base"
-              >
-                {refreshing
-                  ? "Refreshing..."
-                  : "Refresh"}
-              </button>
+            <div className="hidden min-w-52 border-l border-accent/15 pl-6 xl:block">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
+                The Mivo method
+              </p>
+              <p className="mt-3 text-sm font-semibold">Learn <span className="text-accent">→</span> Test</p>
+              <p className="mt-1 text-sm font-semibold">Record <span className="text-accent">→</span> Improve</p>
             </div>
           </div>
+        </section>
 
-          {error && (
-            <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-              {error}
-            </div>
-          )}
+        {dataWarnings.length > 0 && (
+          <div role="status" className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+            <p className="font-semibold">Some dashboard data could not be loaded.</p>
+            <ul className="mt-1 list-inside list-disc text-amber-100/80">
+              {dataWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
+            </ul>
+          </div>
+        )}
 
-          {/* SUMMARY */}
-          <section className="mt-7 grid grid-cols-2 gap-3 sm:mt-10 sm:gap-4 xl:grid-cols-5">
-            <SummaryCard
-              label="Total Accounts"
-              value={String(statistics.totalAccounts)}
-            />
+        <section
+          aria-label="Trading performance summary"
+          className="mt-6 grid grid-cols-2 border-y border-border sm:grid-cols-4"
+        >
+          <div className="border-b border-r border-border px-4 py-5 sm:border-b-0 sm:px-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Net P&amp;L</p>
+            <p className={"mt-2 text-2xl font-bold tracking-tight " + (noClosedTrades ? "text-muted" : stats.net >= 0 ? "text-accent" : "text-rose-400")}>
+              {noClosedTrades ? "—" : money(stats.net)}
+            </p>
+            <p className="mt-1 text-xs text-muted">{range === "ALL" ? "All recorded" : "Selected period"}</p>
+          </div>
+          <div className="border-b border-border px-4 py-5 sm:border-b-0 sm:border-r sm:px-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Win rate</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight">
+              {stats.winRate === null ? "—" : stats.winRate.toFixed(1) + "%"}
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              {stats.trades ? stats.wins + " wins · " + stats.losses + " losses" : "No closed trades yet"}
+            </p>
+          </div>
+          <div className="border-r border-border px-4 py-5 sm:px-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Closed trades</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight">{stats.trades || "—"}</p>
+            <p className="mt-1 text-xs text-muted">In your journal</p>
+          </div>
+          <div className="px-4 py-5 sm:px-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Profit factor</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight">
+              {stats.profitFactor === null
+                ? "—"
+                : stats.profitFactor === Infinity
+                  ? "∞"
+                  : stats.profitFactor.toFixed(2)}
+            </p>
+            <p className="mt-1 text-xs text-muted">Net results, selected period</p>
+          </div>
+        </section>
 
-            <SummaryCard
-              label="Active Accounts"
-              value={String(statistics.activeAccounts)}
-            />
-
-            <SummaryCard
-              label="Funded Accounts"
-              value={String(statistics.fundedAccounts)}
-            />
-
-            <SummaryCard
-              label="Total Profit"
-              value={money(statistics.totalProfit)}
-              positive={statistics.totalProfit > 0}
-              negative={statistics.totalProfit < 0}
-            />
-
-            <div className="col-span-2 xl:col-span-1">
-              <SummaryCard
-                label="Withdrawable"
-                value={money(statistics.totalWithdrawable)}
-                positive={statistics.totalWithdrawable > 0}
-              />
-            </div>
-          </section>
-
-          {/* KYC + REFERRALS */}
-          <section className="mt-6 grid gap-4 lg:mt-8 lg:grid-cols-2">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">
-                    KYC Verification
-                  </p>
-
-                  <h3 className="mt-2 text-lg font-bold sm:text-xl">
-                    {kycStatus === "APPROVED"
-                      ? "Identity Verified"
-                      : kycStatus === "PENDING"
-                      ? "Verification In Review"
-                      : kycStatus === "REJECTED"
-                      ? "Verification Required"
-                      : "Verify Your Identity"}
-                  </h3>
-
-                  <p className="mt-2 text-sm leading-6 text-gray-400">
-                    Complete verification to access withdrawals
-                    and funded account features.
-                  </p>
-                </div>
-
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
-                    kycStatus === "APPROVED"
-                      ? "bg-green-500/10 text-green-400"
-                      : kycStatus === "PENDING"
-                      ? "bg-yellow-500/10 text-yellow-400"
-                      : kycStatus === "REJECTED"
-                      ? "bg-red-500/10 text-red-400"
-                      : "bg-zinc-700 text-gray-300"
-                  }`}
-                >
-                  {kycStatus === "APPROVED"
-                    ? "Verified"
-                    : kycStatus === "PENDING"
-                    ? "Pending"
-                    : kycStatus === "REJECTED"
-                    ? "Rejected"
-                    : "Not Verified"}
-                </span>
-              </div>
-
-              <Link
-                href="/kyc"
-                className="mt-5 inline-block rounded-lg bg-green-500 px-5 py-2.5 text-sm font-bold text-black hover:bg-green-400"
-              >
-                {kycStatus === "APPROVED"
-                  ? "View KYC"
-                  : kycStatus === "PENDING"
-                  ? "View Status"
-                  : "Complete KYC"}
-              </Link>
-            </div>
-
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">
-                    Referral Program
-                  </p>
-
-                  <h3 className="mt-2 text-lg font-bold sm:text-xl">
-                    Invite Traders & Earn
-                  </h3>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-2xl font-black text-green-400 sm:text-3xl">
-                    {totalReferrals}
-                  </p>
-
-                  <p className="text-xs text-gray-500">
-                    Referrals
-                  </p>
-                </div>
-              </div>
-
-              {referralCode && (
-                <div className="mt-4 rounded-lg bg-black p-3">
-                  <p className="text-xs text-gray-500">
-                    Your Referral Code
-                  </p>
-
-                  <p className="mt-1 font-bold text-green-400">
-                    {referralCode}
-                  </p>
-                </div>
-              )}
-
-              <Link
-                href="/referrals"
-                className="mt-5 inline-block rounded-lg border border-zinc-700 px-5 py-2.5 text-sm font-bold hover:border-green-500 hover:text-green-400"
-              >
-                View Referrals
-              </Link>
-            </div>
-          </section>
-
-          {/* FEATURED ACCOUNT */}
-          {!loading && featuredAccount && (
-            <section className="mt-6 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 lg:mt-8">
-              <div className="flex flex-col gap-5 border-b border-zinc-800 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 sm:text-sm">
-                    Account Overview
-                  </p>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
-                    <h2 className="text-2xl font-bold sm:text-3xl">
-                      {featuredAccount.account}
-                    </h2>
-
-                    <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-gray-300">
-                      {getAccountType(featuredAccount)}
-                    </span>
-
-                    <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-gray-300">
-                      {getStage(featuredAccount)}
-                    </span>
-
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        statusStyles[featuredAccount.status] ??
-                        "bg-gray-700 text-gray-300"
-                      }`}
-                    >
-                      {statusMap[featuredAccount.status] ??
-                        featuredAccount.status}
-                    </span>
-                  </div>
-
-                  {featuredAccount.mt5Login && (
-                    <p className="mt-3 text-sm text-gray-500">
-                      MT5 Login: {featuredAccount.mt5Login}
-                    </p>
-                  )}
-                </div>
-
-                <Link
-                  href={`/dashboard/accounts/${featuredAccount.id}`}
-                  className="rounded-lg bg-green-500 px-5 py-2.5 text-center text-sm font-bold text-black hover:bg-green-400 sm:text-base"
-                >
-                  View Account
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-2 gap-px bg-zinc-800 xl:grid-cols-4">
-                <AccountStat
-                  label="Balance"
-                  value={money(featuredAccount.currentBalance)}
-                />
-
-                <AccountStat
-                  label="Equity"
-                  value={money(featuredAccount.currentEquity)}
-                />
-
-                <AccountStat
-                  label="Profit"
-                  value={money(featuredAccount.profit)}
-                  className={
-                    featuredAccount.profit > 0
-                      ? "text-green-400"
-                      : featuredAccount.profit < 0
-                      ? "text-red-400"
-                      : ""
-                  }
-                />
-
-                <AccountStat
-                  label="Withdrawable"
-                  value={money(
-                    featuredAccount.withdrawableProfit
-                  )}
-                  className={
-                    featuredAccount.withdrawableProfit > 0
-                      ? "text-green-400"
-                      : ""
-                  }
-                />
-              </div>
-            </section>
-          )}
-
-          {/* TRADING ACCOUNTS */}
-          <section className="mt-8 sm:mt-10">
-            <div className="mb-5 flex items-end justify-between gap-5">
+        <section className="mt-8 grid gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(330px,0.85fr)]">
+          <article className="overflow-hidden rounded-2xl border border-border bg-surface">
+            <div className="flex flex-col justify-between gap-4 border-b border-border px-5 py-5 sm:flex-row sm:items-center sm:px-6">
               <div>
-                <h2 className="text-xl font-bold sm:text-2xl">
-                  Trading Accounts
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Your Mivo evaluation and funded accounts.
-                </p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Performance</p>
+                <h2 className="mt-1 text-xl font-bold">Cumulative net results</h2>
               </div>
-
-              {!loading && challenges.length > 0 && (
-                <span className="shrink-0 text-xs text-gray-500 sm:text-sm">
-                  {challenges.length}{" "}
-                  {challenges.length === 1
-                    ? "account"
-                    : "accounts"}
-                </span>
-              )}
+              <div className="flex items-center gap-1 rounded-xl border border-border bg-background p-1" aria-label="Performance date range">
+                {ranges.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    aria-pressed={range === item.label}
+                    onClick={() => { setRange(item.label); setReferenceTime(Date.now()); }}
+                    className={
+                      "rounded-lg px-3 py-1.5 text-xs font-semibold transition " +
+                      (range === item.label
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted hover:text-foreground")
+                    }
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
-
-            {loading ? (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center text-gray-400">
-                Loading trading accounts...
-              </div>
-            ) : challenges.length === 0 ? (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-7 text-center sm:p-10">
-                <h3 className="text-xl font-bold">
-                  No Trading Accounts
-                </h3>
-
-                <p className="mt-2 text-sm text-gray-400 sm:text-base">
-                  Purchase a challenge to get started.
+            <div className="flex flex-wrap items-end justify-between gap-4 px-5 pt-5 sm:px-6">
+              <div>
+                <p className="text-3xl font-bold tracking-tight">
+                  {selectedTrades.length ? money(stats.net) : "—"}
                 </p>
-
-                <Link
-                  href="/challenges"
-                  className="mt-5 inline-block rounded-lg bg-green-500 px-5 py-3 font-bold text-black"
-                >
-                  Buy Challenge
-                </Link>
+                <p className="mt-1 text-xs text-muted">
+                  {selectedTrades.length
+                    ? selectedTrades.length + " closed " + (selectedTrades.length === 1 ? "trade" : "trades") + " · fees included"
+                    : noClosedTrades
+                      ? "Waiting for your first journaled result"
+                      : "No closed trades in this range"}
+                </p>
               </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-                {/* DESKTOP */}
-                <div className="hidden overflow-x-auto md:block">
-                  <div className="min-w-[1050px]">
-                    <div className="grid grid-cols-[1.4fr_.8fr_1fr_1fr_1fr_1fr_1fr_50px] gap-4 border-b border-zinc-800 bg-zinc-950/60 px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      <div>Account</div>
-                      <div>Stage</div>
-                      <div>Status</div>
-                      <div>Balance</div>
-                      <div>Equity</div>
-                      <div>Profit</div>
-                      <div>Withdrawable</div>
-                      <div></div>
-                    </div>
+              <Link href="/journal" className="text-sm font-semibold text-accent hover:text-accent">
+                Review journal →
+              </Link>
+            </div>
+            <EquityChart trades={selectedTrades} />
+          </article>
 
-                    {challenges.map((challenge) => (
-                      <Link
-                        key={challenge.id}
-                        href={`/dashboard/accounts/${challenge.id}`}
-                        className="grid grid-cols-[1.4fr_.8fr_1fr_1fr_1fr_1fr_1fr_50px] items-center gap-4 border-b border-zinc-800 px-6 py-5 transition last:border-b-0 hover:bg-zinc-800/60"
-                      >
-                        <div>
-                          <p className="font-bold">
-                            {challenge.account}
-                          </p>
-
-                          <p className="mt-1 text-xs text-gray-500">
-                            {getAccountType(challenge)}
-                          </p>
-
-                          {challenge.mt5Login && (
-                            <p className="mt-1 text-xs text-gray-600">
-                              MT5 {challenge.mt5Login}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <span className="inline-flex rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-gray-300">
-                            {getStage(challenge)}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              statusStyles[challenge.status] ??
-                              "bg-gray-700 text-gray-300"
-                            }`}
-                          >
-                            {statusMap[challenge.status] ??
-                              challenge.status}
-                          </span>
-                        </div>
-
-                        <div>
-                          <p className="font-semibold">
-                            {money(challenge.currentBalance)}
-                          </p>
-
-                          <p className="mt-1 text-xs text-gray-500">
-                            Start{" "}
-                            {money(challenge.startingBalance)}
-                          </p>
-                        </div>
-
-                        <div className="font-semibold">
-                          {money(challenge.currentEquity)}
-                        </div>
-
-                        <div
-                          className={`font-semibold ${
-                            challenge.profit >= 0
-                              ? "text-green-400"
-                              : "text-red-400"
-                          }`}
-                        >
-                          {money(challenge.profit)}
-                        </div>
-
-                        <div className="font-semibold text-green-400">
-                          {money(
-                            challenge.withdrawableProfit
-                          )}
-                        </div>
-
-                        <div className="text-right text-xl text-gray-500">
-                          →
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-
-                {/* MOBILE */}
-                <div className="divide-y divide-zinc-800 md:hidden">
-                  {challenges.map((challenge) => (
-                    <Link
-                      key={challenge.id}
-                      href={`/dashboard/accounts/${challenge.id}`}
-                      className="block p-5"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-lg font-bold">
-                            {challenge.account}
-                          </p>
-
-                          <p className="mt-1 text-sm text-gray-500">
-                            {getAccountType(challenge)}
-                          </p>
-
-                          <p className="mt-2 text-xs font-semibold text-gray-300">
-                            {getStage(challenge)}
-                          </p>
-                        </div>
-
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            statusStyles[challenge.status] ??
-                            "bg-gray-700 text-gray-300"
-                          }`}
-                        >
-                          {statusMap[challenge.status] ??
-                            challenge.status}
+          <article className="overflow-hidden rounded-2xl border border-border bg-surface">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Your journal</p>
+                <h2 className="mt-1 text-xl font-bold">Recent trades</h2>
+              </div>
+              <Link href="/journal" className="text-xs font-semibold text-accent hover:text-accent">
+                View all →
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {recentTrades.map((trade) => {
+                const result = netResult(trade);
+                const isClosed = trade.status === "CLOSED";
+                return (
+                  <div key={trade.id} className="flex items-center justify-between gap-3 px-5 py-4 sm:px-6">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-semibold">{trade.symbol}</span>
+                        <span className="rounded-md border border-border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted">
+                          {trade.direction}
                         </span>
                       </div>
-
-                      <div className="mt-5 grid grid-cols-2 gap-4">
-                        <MobileStat
-                          label="Balance"
-                          value={money(challenge.currentBalance)}
-                        />
-
-                        <MobileStat
-                          label="Equity"
-                          value={money(challenge.currentEquity)}
-                        />
-
-                        <MobileStat
-                          label="Profit"
-                          value={money(challenge.profit)}
-                          className={
-                            challenge.profit >= 0
-                              ? "text-green-400"
-                              : "text-red-400"
-                          }
-                        />
-
-                        <MobileStat
-                          label="Withdrawable"
-                          value={money(
-                            challenge.withdrawableProfit
-                          )}
-                          className="text-green-400"
-                        />
-                      </div>
-                    </Link>
-                  ))}
+                      <p className="mt-1 text-xs text-muted">{shortDate(trade.openedAt)} · {trade.status}</p>
+                    </div>
+                    <span className={"shrink-0 text-sm font-semibold " + (!isClosed ? "text-muted" : result >= 0 ? "text-accent" : "text-rose-400")}>
+                      {isClosed ? money(result) : "Open"}
+                    </span>
+                  </div>
+                );
+              })}
+              {recentTrades.length === 0 && (
+                <div className="px-6 py-9">
+                  <p className="font-semibold">No trades in the journal yet</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">Record a live trade or save a finished replay to start reviewing your decisions here.</p>
+                  <Link href="/journal" className="mt-4 inline-flex text-sm font-semibold text-accent hover:text-accent">
+                    Add your first trade →
+                  </Link>
                 </div>
+              )}
+            </div>
+            <div className="border-t border-border px-5 py-4 sm:px-6">
+              <Link href="/backtesting" className="flex items-center justify-between gap-3 text-sm font-semibold transition hover:text-accent">
+                <span>Replay a setup in the Backtesting Lab</span>
+                <span aria-hidden="true">↗</span>
+              </Link>
+            </div>
+          </article>
+        </section>
+
+        <section className="mt-8 grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+          <article className="overflow-hidden rounded-2xl border border-border bg-surface">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Learn together</p>
+                <h2 className="mt-1 text-xl font-bold">From the community</h2>
               </div>
-            )}
-          </section>
-        </main>
+              <Link href="/community" className="text-xs font-semibold text-accent hover:text-accent">
+                Join the conversation →
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {posts.slice(0, 3).map((post) => (
+                <Link
+                  key={post.id}
+                  href="/community"
+                  className="block px-5 py-4 transition hover:bg-background/50 sm:px-6"
+                >
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
+                    <span className="font-semibold text-accent">{post.category}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{post.author?.name || "Mivo member"}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{timeAgo(post.createdAt)}</span>
+                  </div>
+                  <h3 className="mt-2 font-semibold">{post.title}</h3>
+                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted">{post.content}</p>
+                  <p className="mt-2 text-[11px] text-muted">
+                    {(post.likesCount ?? post.likes?.length ?? 0) + " reactions · " + (post.commentsCount ?? post.comments?.length ?? 0) + " comments"}
+                  </p>
+                </Link>
+              ))}
+              {posts.length === 0 && (
+                <div className="px-6 py-8">
+                  <p className="font-semibold">Your community is getting ready</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">Share a setup, ask a question, or join the conversation with other Mivo traders.</p>
+                  <Link href="/community" className="mt-4 inline-flex text-sm font-semibold text-accent hover:text-accent">
+                    Open the community →
+                  </Link>
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article className="overflow-hidden rounded-2xl border border-border bg-surface">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-5 sm:px-6">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Trader chat</p>
+                <h2 className="mt-1 text-xl font-bold">Join the conversation</h2>
+              </div>
+              <Link href="/chat" className="text-xs font-semibold text-accent hover:text-accent">
+                Open chat →
+              </Link>
+            </div>
+            <div className="p-5 sm:p-6">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-lg text-accent">
+                T
+              </div>
+              <h3 className="mt-4 text-lg font-semibold">One room for Mivo traders</h3>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Share market context and discuss setups in the shared trader chat.
+              </p>
+              <Link href="/chat" className="mt-4 inline-flex text-sm font-semibold text-accent hover:text-accent">
+                Enter trader chat →
+              </Link>
+            </div>
+          </article>
+        </section>
+
+        <footer className="mt-8 flex flex-col gap-2 border-t border-border pt-5 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} Mivo Capital</p>
+          <p>Learn. Test. Record. Improve.</p>
+        </footer>
       </div>
-    </div>
-  );
-}
-
-function MobileMenuLink({
-  href,
-  children,
-  onClick,
-}: {
-  href: string;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="block rounded-xl px-4 py-3 font-medium text-gray-300 transition hover:bg-zinc-900 hover:text-green-400"
-    >
-      {children}
-    </Link>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  positive = false,
-  negative = false,
-}: {
-  label: string;
-  value: string;
-  positive?: boolean;
-  negative?: boolean;
-}) {
-  return (
-    <div className="h-full rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
-      <p className="text-xs text-gray-500 sm:text-sm">
-        {label}
-      </p>
-
-      <p
-        className={`mt-2 text-xl font-bold sm:text-2xl ${
-          positive
-            ? "text-green-400"
-            : negative
-            ? "text-red-400"
-            : "text-white"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function AccountStat({
-  label,
-  value,
-  className = "",
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div className="bg-zinc-900 p-4 sm:p-6">
-      <p className="text-xs text-gray-500 sm:text-sm">
-        {label}
-      </p>
-
-      <p
-        className={`mt-2 text-lg font-bold sm:text-xl ${className}`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function MobileStat({
-  label,
-  value,
-  className = "text-white",
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div>
-      <p className="text-xs text-gray-500">
-        {label}
-      </p>
-
-      <p className={`mt-1 font-semibold ${className}`}>
-        {value}
-      </p>
-    </div>
+    </main>
   );
 }

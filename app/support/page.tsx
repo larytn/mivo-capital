@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import Navbar from "../../components/Navbar";
 
 type Ticket = {
   id: string;
@@ -90,8 +89,6 @@ export default function SupportPage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <Navbar />
-
       {/* HEADER */}
       <section className="border-b border-zinc-900">
         <div className="mx-auto max-w-5xl px-4 py-7 sm:px-6 sm:py-10">
@@ -107,7 +104,7 @@ export default function SupportPage() {
 
               <p className="mt-2 max-w-xl text-sm leading-6 text-gray-400 sm:mt-3 sm:text-base">
                 Get help with your account, payments and trading
-                challenges.
+                workspace features.
               </p>
             </div>
 

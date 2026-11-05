@@ -2,87 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 
-function getAdmin(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
-
-  if (!token) return null;
-
-  return verifyToken(token) as {
-    id: string;
-    email: string;
-    role: string;
-  } | null;
-}
-
 export async function GET(request: NextRequest) {
+  const token = request.cookies.get("token")?.value;
+  const admin = token ? verifyToken(token) as { id?: string; role?: string } | null : null;
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (admin.role !== "ADMIN") return NextResponse.json({ error: "Admin access required." }, { status: 403 });
   try {
-    const admin = getAdmin(request);
-
-    if (!admin) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    if (admin.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Admin access required." },
-        { status: 403 }
-      );
-    }
-
     const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        referralCode: true,
-
-        kyc: {
-          select: {
-            status: true,
-          },
-        },
-
-        _count: {
-          select: {
-            challenges: true,
-          },
-        },
-      },
-
-      orderBy: {
-        createdAt: "desc",
-      },
+      select: { id: true, name: true, email: true, role: true, createdAt: true, _count: { select: { communityPosts: true, journalTrades: true } } },
+      orderBy: { createdAt: "desc" },
     });
-
-    const formattedUsers = users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      createdAt: user.createdAt,
-      referralCode: user.referralCode,
-      kycStatus: user.kyc?.status ?? null,
-      challenges: user._count.challenges,
-    }));
-
-    return NextResponse.json({
-      users: formattedUsers,
-    });
-  } catch (error: any) {
+    return NextResponse.json({ users: users.map((user) => ({ ...user, posts: user._count.communityPosts, journalEntries: user._count.journalTrades })) });
+  } catch (error) {
     console.error("ADMIN USERS GET ERROR:", error);
-
-    return NextResponse.json(
-      {
-        error:
-          error.message ||
-          "Failed to load users.",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load members." }, { status: 500 });
   }
 }

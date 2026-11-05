@@ -3,10 +3,7 @@ import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "mivo-secret-key"
-);
+import { getJwtSecret } from "@/lib/jwt-secret";
 
 async function generateUniqueReferralCode() {
   while (true) {
@@ -232,7 +229,7 @@ export const { handlers, signIn, signOut, auth } =
               })
               .setIssuedAt()
               .setExpirationTime("7d")
-              .sign(JWT_SECRET);
+              .sign(new TextEncoder().encode(getJwtSecret()));
 
           cookieStore.set(
             "token",

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Navbar from "../../components/Navbar";
 
 type SettingsUser = {
   id: string;
@@ -283,8 +282,6 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-black text-white">
-        <Navbar />
-
         <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8 text-center text-sm text-gray-400">
             Loading settings...
@@ -296,8 +293,6 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <Navbar />
-
       {/* HEADER */}
 
       <section className="border-b border-zinc-900">

@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const payload = verifyToken(token) as { id: string } | null;
+    const payload = verifyToken(token) as { id?: string; userId?: string } | null;
+    const userId = payload?.id || payload?.userId;
 
-    if (!payload) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Invalid token" },
         { status: 401 }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     }>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: `mivo-capital/kyc/${payload.id}`,
+          folder: `mivo-capital/member-uploads/${userId}`,
           resource_type: "image",
         },
         (error, result) => {
