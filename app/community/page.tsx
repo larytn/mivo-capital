@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { MemberAvatar } from "@/app/components/member-avatar";
 
 type Comment = {
   id: string;
   content: string;
-  author: { id: string; name: string };
+  author: { id: string; name: string; nickname: string; avatarUrl: string | null };
   createdAt: string;
 };
 
@@ -20,7 +21,7 @@ type Post = {
   tradingViewUrl: string | null;
   isPinned: boolean;
   createdAt: string;
-  author: { id: string; name: string; role: string };
+  author: { id: string; name: string; nickname: string; avatarUrl: string | null; role: string };
   likesCount: number;
   comments: Comment[];
   likedByMe: boolean;
@@ -64,6 +65,7 @@ function formatDate(value: string) {
 export default function CommunityPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [currentUserId, setCurrentUserId] = useState("");
+  const [currentUserIdentity, setCurrentUserIdentity] = useState<{ nickname: string; avatarUrl: string | null }>({ nickname: "Trader", avatarUrl: null });
   const [moderationConfigured, setModerationConfigured] = useState<boolean | null>(null);
   const [officialPosts, setOfficialPosts] = useState<OfficialPost[]>([]);
   const [officialLoading, setOfficialLoading] = useState(true);
@@ -103,12 +105,16 @@ export default function CommunityPage() {
       const data = (await response.json()) as {
         posts?: Post[];
         currentUserId?: string;
+        currentUser?: { nickname?: string; avatarUrl?: string | null } | null;
         moderationConfigured?: boolean;
         error?: string;
       };
       if (!response.ok) throw new Error(data.error || "Unable to load posts.");
       setPosts(Array.isArray(data.posts) ? data.posts : []);
       setCurrentUserId(data.currentUserId || "");
+      if (data.currentUser?.nickname) {
+        setCurrentUserIdentity({ nickname: data.currentUser.nickname, avatarUrl: data.currentUser.avatarUrl ?? null });
+      }
       setModerationConfigured(Boolean(data.moderationConfigured));
       setNotice("");
     } catch (error) {
@@ -208,7 +214,7 @@ export default function CommunityPage() {
     const query = search.trim().toLowerCase();
     const memberItems: FeedItem[] = posts
       .filter((post) => (activeCategory === "All posts" || post.category === activeCategory))
-      .filter((post) => !query || `${post.title} ${post.content} ${post.author.name} ${post.category}`.toLowerCase().includes(query))
+      .filter((post) => !query || `${post.title} ${post.content} ${post.author.nickname} ${post.author.name} ${post.category}`.toLowerCase().includes(query))
       .map((post) => ({ kind: "community", id: post.id, createdAt: post.createdAt, post }));
 
     const officialItems: FeedItem[] = officialPosts
@@ -442,7 +448,7 @@ export default function CommunityPage() {
         </header>
 
         <div className="community-composer">
-          <div className="community-post-avatar" aria-hidden="true">M</div>
+          <MemberAvatar name={currentUserIdentity.nickname} imageUrl={currentUserIdentity.avatarUrl} size={40} className="community-post-avatar" />
           <button type="button" onClick={openNewComposer} className="community-compose-prompt">What&apos;s happening in the markets?</button>
           <button type="button" onClick={openNewComposer} className="community-compose-submit">Post</button>
         </div>
@@ -501,8 +507,8 @@ export default function CommunityPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="community-post-author">
-                      <span className="community-post-avatar" aria-hidden="true">{post.author.name.slice(0, 1).toUpperCase()}</span>
-                      <span className="min-w-0 truncate text-sm font-semibold">{post.author.name}</span>
+                      <MemberAvatar name={post.author.nickname} imageUrl={post.author.avatarUrl} size={36} className="community-post-avatar" />
+                      <span className="min-w-0 truncate text-sm font-semibold">@{post.author.nickname}</span>
                       {post.author.role === "ADMIN" && <span className="truncate text-[10px] text-accent">Mivo team</span>}
                       <time className="shrink-0 text-xs text-muted">· {formatDate(post.createdAt)}</time>
                     </div>
@@ -595,12 +601,10 @@ export default function CommunityPage() {
                       <div className="space-y-4">
                         {post.comments.map((comment) => (
                           <div key={comment.id} className="flex gap-3">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background text-xs font-bold text-muted">
-                              {comment.author.name.slice(0, 1).toUpperCase()}
-                            </div>
+                            <MemberAvatar name={comment.author.nickname} imageUrl={comment.author.avatarUrl} size={32} />
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-baseline gap-x-2">
-                                <span className="text-sm font-semibold">{comment.author.name}</span>
+                                <span className="text-sm font-semibold">@{comment.author.nickname}</span>
                                 <time className="text-xs text-muted">{formatDate(comment.createdAt)}</time>
                               </div>
                               <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-muted">{comment.content}</p>

@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         take: 80,
         orderBy: { createdAt: "desc" },
         include: {
-          author: { select: { id: true, name: true, role: true } },
+          author: { select: { id: true, name: true, nickname: true, avatarUrl: true, role: true } },
           reactions: { select: { emoji: true, userId: true } },
         },
       }),
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         mediaUrl: kind !== "TEXT" && mediaUrl ? mediaUrl : null,
       },
       include: {
-        author: { select: { id: true, name: true, role: true } },
+        author: { select: { id: true, name: true, nickname: true, avatarUrl: true, role: true } },
         reactions: { select: { emoji: true, userId: true } },
       },
     });
@@ -173,7 +173,7 @@ export async function PATCH(request: NextRequest) {
     const message = await prisma.chatMessage.findUnique({
       where: { id },
       include: {
-        author: { select: { id: true, name: true, role: true } },
+        author: { select: { id: true, name: true, nickname: true, avatarUrl: true, role: true } },
         reactions: { select: { emoji: true, userId: true } },
       },
     });

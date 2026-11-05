@@ -29,6 +29,19 @@ async function generateUniqueReferralCode() {
   }
 }
 
+async function generateUniqueNickname() {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const nickname = `Trader_${suffix}`;
+    const existing = await prisma.user.findFirst({
+      where: { nickname: { equals: nickname, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (!existing) return nickname;
+  }
+  throw new Error("Unable to create a unique trader nickname.");
+}
+
 export const { handlers, signIn, signOut, auth } =
   NextAuth({
     providers: [
@@ -61,6 +74,15 @@ export const { handlers, signIn, signOut, auth } =
               .get("mivo_referral")
               ?.value?.trim()
               .toUpperCase() || "";
+          const savedSignupNickname =
+            cookieStore.get("mivo_signup_nickname")?.value?.trim() || "";
+
+          cookieStore.set("mivo_signup_nickname", "", {
+            path: "/",
+            maxAge: 0,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+          });
 
           let dbUser =
             await prisma.user.findUnique({
@@ -74,6 +96,16 @@ export const { handlers, signIn, signOut, auth } =
           // --------------------------------
 
           if (!dbUser) {
+            const nickname = savedSignupNickname
+              ? savedSignupNickname
+              : await generateUniqueNickname();
+            if (!/^[\p{L}\p{N}._-]{3,24}$/u.test(nickname)) return false;
+            const nicknameTaken = await prisma.user.findFirst({
+              where: { nickname: { equals: nickname, mode: "insensitive" } },
+              select: { id: true },
+            });
+            if (nicknameTaken) return false;
+
             let referrer: {
               id: string;
             } | null = null;
@@ -101,6 +133,8 @@ export const { handlers, signIn, signOut, auth } =
                   name:
                     user.name ||
                     "Mivo Trader",
+
+                  nickname,
 
                   email,
 

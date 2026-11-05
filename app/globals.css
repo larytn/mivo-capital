@@ -129,6 +129,7 @@ button { cursor: pointer; }
 .workspace-member-caption { margin-top: 3px; color: var(--muted); font-size: 10px; }
 .workspace-signout { width: 100%; margin-top: 8px; border: 0; border-radius: 9px; background: transparent; padding: 9px 11px; color: var(--muted); text-align: left; font-size: 11px; }
 .workspace-signout:hover { background: var(--surface-raised); color: var(--foreground); }
+.member-avatar { position: relative; display: inline-grid; flex: 0 0 auto; place-items: center; overflow: hidden; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-raised); color: var(--muted); font-size: 11px; font-weight: 700; line-height: 1; }
 .workspace-content { width: calc(100% - 256px); min-width: 0; min-height: 100vh; min-height: 100svh; margin-left: 256px; }
 .workspace-topbar { position: sticky; top: 0; z-index: 40; display: flex; width: 100%; height: 64px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 91%, transparent); padding: 0 24px; backdrop-filter: blur(16px); }
 .workspace-topbar-left, .workspace-topbar-actions { display: flex; align-items: center; gap: 12px; }
@@ -181,6 +182,10 @@ button { cursor: pointer; }
 .chat-message-row { display: flex; align-items: flex-end; gap: 8px; }
 .chat-message-row.is-own { justify-content: flex-end; }
 .chat-message-avatar { display: grid; width: 27px; height: 27px; flex: 0 0 27px; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--surface); color: var(--muted); font-size: 10px; font-weight: 700; }
+.chat-message-bubble { -webkit-touch-callout: none; }
+.chat-emoji-picker-quick { display: flex; gap: 5px; border-bottom: 1px solid var(--border); padding: 0 0 9px; }
+.chat-emoji-picker-quick button { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid transparent; border-radius: 50%; background: transparent; color: var(--foreground); font-size: 19px; }
+.chat-emoji-picker-quick button:hover, .chat-emoji-picker-quick button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .chat-message-bubble { position: relative; width: fit-content; max-width: min(78%, 560px); min-width: 118px; border: 1px solid var(--border); border-radius: 5px 13px 13px 13px; background: var(--surface); padding: 9px 12px 7px; color: var(--foreground); }
 .chat-message-row.is-own .chat-message-bubble { border-color: color-mix(in srgb, var(--accent) 24%, var(--border)); border-radius: 13px 5px 13px 13px; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .chat-message-head { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
@@ -285,8 +290,10 @@ button { cursor: pointer; }
 }
 .chat-gif-badge { position: static; border: 1px solid var(--border); border-radius: 4px; background: transparent; padding: 2px 5px; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .06em; }
 .chat-emoji { display: inline-block; flex: 0 0 auto; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: 13px; line-height: 1; filter: grayscale(1); }
-.chat-picker-emoji-button { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--foreground); font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: 22px; line-height: 1; transition: background 120ms ease, transform 120ms ease; }
+.chat-picker-emoji-button { position: relative; display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--foreground); font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: 22px; line-height: 1; transition: background 120ms ease, transform 120ms ease; }
 .chat-picker-emoji-button:hover, .chat-picker-emoji-button:focus-visible { background: var(--surface-raised); outline: none; }
+.chat-picker-emoji-button.is-selected { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+.chat-picker-emoji-button small { position: absolute; right: -1px; bottom: -1px; display: grid; min-width: 14px; height: 14px; place-items: center; border-radius: 999px; background: var(--surface-raised); padding: 0 3px; color: var(--muted); font-family: var(--font-geist-sans); font-size: 8px; line-height: 1; }
 .chat-emoji-picker-expanded { overflow: hidden; max-height: min(390px, calc(100dvh - 1rem)); animation: chat-picker-in 120ms ease-out; }
 .chat-emoji-picker-content { display: flex; max-height: min(390px, calc(100dvh - 1rem)); flex-direction: column; padding: 12px; }
 .chat-emoji-category-tabs { display: flex; flex: 0 0 auto; gap: 3px; overflow-x: auto; margin: 0 0 6px; border-bottom: 1px solid var(--border); scrollbar-width: none; }

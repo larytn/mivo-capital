@@ -12,6 +12,7 @@ function SignupContent() {
     searchParams.get("ref") || "";
 
   const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -23,6 +24,7 @@ function SignupContent() {
     useState(false);
 
   const [error, setError] = useState("");
+  const validNickname = /^[\p{L}\p{N}._-]{3,24}$/u.test(nickname.trim());
 
   // EMAIL SIGNUP
   const handleSignup = async () => {
@@ -30,6 +32,7 @@ function SignupContent() {
       loading ||
       googleLoading ||
       !name.trim() ||
+      !validNickname ||
       !email.trim() ||
       !password
     ) {
@@ -53,6 +56,7 @@ function SignupContent() {
           },
           body: JSON.stringify({
             name: name.trim(),
+            nickname: nickname.trim(),
             email: normalizedEmail,
             password,
             referralCode:
@@ -92,6 +96,11 @@ function SignupContent() {
 
   // GOOGLE SIGNUP
   const handleGoogleSignup = async () => {
+    if (!validNickname) {
+      setError("Choose a nickname with 3–24 letters, numbers, dots, underscores or hyphens first.");
+      return;
+    }
+
     try {
       setGoogleLoading(true);
       setError("");
@@ -107,6 +116,11 @@ function SignupContent() {
         document.cookie =
           "mivo_referral=; path=/; max-age=0; SameSite=Lax";
       }
+
+      document.cookie =
+        `mivo_signup_nickname=${encodeURIComponent(nickname.trim())}; path=/; max-age=600; SameSite=Lax${
+          window.location.protocol === "https:" ? "; Secure" : ""
+        }`;
 
       await signIn("google", {
         callbackUrl: "/dashboard",
@@ -184,13 +198,38 @@ function SignupContent() {
             </div>
           )}
 
+          <div className="mt-6">
+            <label
+              htmlFor="nickname"
+              className="mb-2 block text-xs font-medium text-gray-400 sm:text-sm"
+            >
+              Trader Nickname
+            </label>
+            <input
+              id="nickname"
+              type="text"
+              autoComplete="nickname"
+              maxLength={24}
+              placeholder="Choose your public nickname"
+              value={nickname}
+              onChange={(event) => setNickname(event.target.value.replace(/\s/g, ""))}
+              onKeyDown={handleKeyDown}
+              disabled={loading || googleLoading}
+              aria-describedby="nickname-help"
+              className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-green-500 disabled:opacity-60 sm:py-4"
+            />
+            <p id="nickname-help" className="mt-2 text-xs text-gray-600">
+              Shown to other members in Trader Chat and Community. Use 3–24 letters, numbers, dots, underscores or hyphens.
+            </p>
+          </div>
+
           {/* GOOGLE */}
 
           <button
             type="button"
             onClick={handleGoogleSignup}
             disabled={
-              googleLoading || loading
+              googleLoading || loading || !validNickname
             }
             className="mt-7 flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-700 bg-white px-6 py-3.5 text-sm font-bold text-black transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 sm:py-4"
           >
@@ -374,6 +413,7 @@ function SignupContent() {
             disabled={
               loading ||
               googleLoading ||
+              !validNickname ||
               !name.trim() ||
               !email.trim() ||
               password.length < 8

@@ -23,14 +23,22 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const name = body.name?.trim();
+    const nickname = typeof body.nickname === "string" ? body.nickname.trim() : "";
     const email = body.email?.trim().toLowerCase();
     const password = body.password;
     const referralCode =
       body.referralCode?.trim().toUpperCase() || "";
 
-    if (!name || !email || !password) {
+    if (!name || !nickname || !email || !password) {
       return NextResponse.json(
-        { error: "Name, email and password are required." },
+        { error: "Full name, nickname, email and password are required." },
+        { status: 400 }
+      );
+    }
+
+    if (!/^[\p{L}\p{N}._-]{3,24}$/u.test(nickname)) {
+      return NextResponse.json(
+        { error: "Nickname must be 3–24 letters, numbers, dots, underscores or hyphens." },
         { status: 400 }
       );
     }
@@ -50,6 +58,17 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "An account already exists with this email." },
         { status: 400 }
+      );
+    }
+
+    const existingNickname = await prisma.user.findFirst({
+      where: { nickname: { equals: nickname, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (existingNickname) {
+      return NextResponse.json(
+        { error: "That nickname is already in use. Choose another one." },
+        { status: 409 }
       );
     }
 
@@ -76,6 +95,7 @@ export async function POST(request: Request) {
     const user = await prisma.user.create({
       data: {
         name,
+        nickname,
         email,
         password: hashedPassword,
         authProvider: "EMAIL",
@@ -92,6 +112,7 @@ export async function POST(request: Request) {
       select: {
         id: true,
         name: true,
+        nickname: true,
         email: true,
         referralCode: true,
       },
@@ -107,6 +128,13 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("SIGNUP ERROR:", error);
+
+    if ((error as { code?: string } | null)?.code === "P2002") {
+      return NextResponse.json(
+        { error: "That email or nickname is already in use." },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json(
       { error: "Unable to create your account." },

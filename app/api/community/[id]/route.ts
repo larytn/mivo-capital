@@ -120,7 +120,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     if (body.action === "comment") {
       const content = typeof body.content === "string" ? body.content.trim() : "";
       if (!content || content.length > 1200) return NextResponse.json({ error: "Write a comment up to 1,200 characters." }, { status: 400 });
-      const comment = await prisma.communityComment.create({ data: { postId, authorId: userId, content }, include: { author: { select: { id: true, name: true } } } });
+      const comment = await prisma.communityComment.create({ data: { postId, authorId: userId, content }, include: { author: { select: { id: true, name: true, nickname: true, avatarUrl: true } } } });
       return NextResponse.json({ comment }, { status: 201 });
     }
     return NextResponse.json({ error: "Unsupported action." }, { status: 400 });

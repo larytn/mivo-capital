@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   const userId = memberId(request);
   if (!userId) return NextResponse.json({ error: "Sign in to view the community." }, { status: 401 });
   try {
-    const posts = await prisma.communityPost.findMany({
+    const [posts, currentUser] = await Promise.all([prisma.communityPost.findMany({
       where: {
         OR: [
           { moderationStatus: "APPROVED" },
@@ -71,15 +71,16 @@ export async function GET(request: NextRequest) {
       orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
       take: Math.min(60, Math.max(1, Number.parseInt(request.nextUrl.searchParams.get("limit") || "60", 10) || 60)),
       include: {
-        author: { select: { id: true, name: true, role: true } },
+        author: { select: { id: true, name: true, nickname: true, avatarUrl: true, role: true } },
         likes: { where: { userId }, select: { userId: true } },
-        comments: { orderBy: { createdAt: "asc" }, include: { author: { select: { id: true, name: true } } } },
+        comments: { orderBy: { createdAt: "asc" }, include: { author: { select: { id: true, name: true, nickname: true, avatarUrl: true } } } },
         _count: { select: { likes: true } },
       },
-    });
+    }), prisma.user.findUnique({ where: { id: userId }, select: { nickname: true, avatarUrl: true } })]);
     return NextResponse.json(
       {
         currentUserId: userId,
+        currentUser,
         moderationConfigured: isCommunityModerationConfigured(),
         posts: posts.map(({ _count, likes, ...post }) => ({
           ...post,

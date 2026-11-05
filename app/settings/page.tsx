@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MemberAvatar } from "@/app/components/member-avatar";
 
 type SettingsUser = {
   id: string;
   name: string;
+  nickname: string;
+  avatarUrl: string | null;
   email: string;
   authProvider: string;
   hasPassword: boolean;
@@ -17,6 +20,8 @@ export default function SettingsPage() {
     useState<SettingsUser | null>(null);
 
   const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [currentPassword, setCurrentPassword] =
     useState("");
@@ -31,6 +36,8 @@ export default function SettingsPage() {
 
   const [savingProfile, setSavingProfile] =
     useState(false);
+
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [savingPassword, setSavingPassword] =
     useState(false);
@@ -76,6 +83,8 @@ export default function SettingsPage() {
 
       setUser(data.user);
       setName(data.user.name);
+      setNickname(data.user.nickname);
+      setAvatarUrl(data.user.avatarUrl ?? null);
     } catch (error) {
       console.error(
         "SETTINGS LOAD ERROR:",
@@ -91,15 +100,16 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    loadSettings();
+    void Promise.resolve().then(loadSettings);
   }, []);
 
   async function updateProfile() {
     if (!name.trim()) {
-      setProfileError(
-        "Please enter your full name."
-      );
-
+      setProfileError("Please enter your full name.");
+      return;
+    }
+    if (!/^[\p{L}\p{N}._-]{3,24}$/u.test(nickname.trim())) {
+      setProfileError("Nickname must be 3–24 letters, numbers, dots, underscores or hyphens.");
       return;
     }
 
@@ -121,6 +131,8 @@ export default function SettingsPage() {
           body: JSON.stringify({
             action: "UPDATE_PROFILE",
             name: name.trim(),
+            nickname: nickname.trim(),
+            avatarUrl,
           }),
         }
       );
@@ -151,6 +163,8 @@ export default function SettingsPage() {
           ? {
               ...current,
               name: data.user.name,
+              nickname: data.user.nickname,
+              avatarUrl: data.user.avatarUrl ?? null,
             }
           : current
       );
@@ -165,6 +179,42 @@ export default function SettingsPage() {
       );
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function uploadAvatar(file: File | undefined) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setProfileError("Choose a JPG, PNG or WEBP profile photo.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileError("Your profile photo must be 5 MB or smaller.");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setProfileError("");
+    setProfileMessage("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await response.json();
+      if (response.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!response.ok || typeof data.url !== "string") {
+        setProfileError(data.error || "Unable to upload your profile photo.");
+        return;
+      }
+      setAvatarUrl(data.url);
+      setProfileMessage("Photo uploaded. Save changes to apply it to your public profile.");
+    } catch {
+      setProfileError("Unable to upload your profile photo. Please try again.");
+    } finally {
+      setUploadingAvatar(false);
     }
   }
 
@@ -334,20 +384,16 @@ export default function SettingsPage() {
 
             <div className="flex items-center gap-4">
 
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-green-500 text-xl font-black text-black sm:h-16 sm:w-16 sm:text-2xl">
-                {user.name
-                  ?.charAt(0)
-                  .toUpperCase()}
-              </div>
+              <MemberAvatar name={user.nickname} imageUrl={user.avatarUrl} size={64} className="border-green-500/30 bg-green-500/10 text-lg text-green-400" />
 
               <div className="min-w-0">
 
                 <h2 className="truncate text-xl font-black sm:text-2xl">
-                  {user.name}
+                  @{user.nickname}
                 </h2>
 
                 <p className="mt-1 truncate text-xs text-gray-400 sm:text-sm">
-                  {user.email}
+                  {user.name} · {user.email}
                 </p>
 
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -383,12 +429,11 @@ export default function SettingsPage() {
             </p>
 
             <h2 className="mt-1 text-xl font-bold sm:text-2xl">
-              Personal Information
+              Public Trader Identity
             </h2>
 
             <p className="mt-2 text-xs leading-5 text-gray-500 sm:text-sm">
-              Update the name associated with
-              your Mivo Capital account.
+              Choose the nickname and profile photo other traders see in Trader Chat and Community.
             </p>
           </div>
 
@@ -405,6 +450,27 @@ export default function SettingsPage() {
           )}
 
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
+
+            <div>
+              <label
+                htmlFor="nickname"
+                className="mb-2 block text-xs font-medium text-gray-400 sm:text-sm"
+              >
+                Trader Nickname
+              </label>
+              <input
+                id="nickname"
+                type="text"
+                value={nickname}
+                maxLength={24}
+                onChange={(event) => setNickname(event.target.value.replace(/\s/g, ""))}
+                aria-describedby="settings-nickname-help"
+                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm outline-none transition focus:border-green-500"
+              />
+              <p id="settings-nickname-help" className="mt-2 text-[10px] text-gray-600 sm:text-xs">
+                3–24 letters, numbers, dots, underscores or hyphens.
+              </p>
+            </div>
 
             <div>
               <label
@@ -425,6 +491,25 @@ export default function SettingsPage() {
                 }
                 className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm outline-none transition focus:border-green-500"
               />
+            </div>
+
+            <div className="flex items-center gap-4 sm:col-span-2">
+              <MemberAvatar name={nickname || name} imageUrl={avatarUrl} size={60} className="text-base" />
+              <div className="min-w-0">
+                <label htmlFor="avatar-upload" className="inline-flex cursor-pointer rounded-lg border border-zinc-700 px-4 py-2.5 text-xs font-bold transition hover:border-green-500 hover:text-green-400">
+                  {uploadingAvatar ? "Uploading photo…" : avatarUrl ? "Change profile photo" : "Add profile photo"}
+                </label>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  disabled={uploadingAvatar}
+                  onChange={(event) => { void uploadAvatar(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }}
+                />
+                <p className="mt-2 text-[10px] text-gray-600 sm:text-xs">JPG, PNG or WEBP · up to 5 MB</p>
+              </div>
+              {avatarUrl && <button type="button" onClick={() => setAvatarUrl(null)} disabled={uploadingAvatar} className="ml-auto text-xs text-gray-500 transition hover:text-white">Remove photo</button>}
             </div>
 
             <div>
@@ -456,7 +541,9 @@ export default function SettingsPage() {
             onClick={updateProfile}
             disabled={
               savingProfile ||
-              !name.trim()
+              uploadingAvatar ||
+              !name.trim() ||
+              !nickname.trim()
             }
             className="mt-6 w-full rounded-xl bg-green-500 px-6 py-3.5 text-sm font-black text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >

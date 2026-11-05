@@ -15,6 +15,7 @@ async function main() {
     },
     create: {
       name: "Admin",
+      nickname: "MivoAdmin",
       email: "admin@mivocapital.com",
       password,
       role: "ADMIN",

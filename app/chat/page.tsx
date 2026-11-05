@@ -6,12 +6,14 @@ import { createPortal } from "react-dom";
 import {
   type FormEvent,
   type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { CHAT_REACTION_EMOJIS, CHAT_STICKERS } from "@/lib/chat-catalog";
+import { MemberAvatar } from "@/app/components/member-avatar";
 
 type Message = {
   id: string;
@@ -20,7 +22,7 @@ type Message = {
   mediaKey: string | null;
   mediaUrl: string | null;
   createdAt: string;
-  author: { id: string; name: string; role: string };
+  author: { id: string; name: string; nickname: string; avatarUrl: string | null; role: string };
   reactions: Reaction[];
 };
 
@@ -31,6 +33,7 @@ type ReactionGlyph = "sticker" | "media" | "bookmark";
 type ReactionOption = { emoji: string; label: string };
 type MediaPicker = "STICKER" | "GIF" | null;
 type SavedSticker = { id: string; key: string; stickerKey: string | null; mediaUrl: string | null; label: string; createdAt: string };
+type LongPressStart = { pointerId: number; messageId: string; x: number; y: number; anchor: HTMLElement };
 
 const GIFS = [
   { key: "rocket", label: "To the moon" },
@@ -80,10 +83,6 @@ const REACTION_SEARCH_TERMS: Record<string, string> = {
   "🤷": "shrug whatever", "⭐": "star favorite", "🌟": "glowing star", "✨": "sparkles", "🏆": "trophy winner", "👑": "crown king queen",
 };
 
-function reactionOption(emoji: string): ReactionOption {
-  return REACTION_OPTIONS.find((option) => option.emoji === emoji) ?? { emoji, label: "Reaction" };
-}
-
 function ReactionIcon({ glyph, size = 14 }: { glyph: ReactionGlyph; size?: number }) {
   return (
     <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
@@ -113,6 +112,8 @@ function isMessage(value: unknown): value is Message {
     !!message.author &&
     typeof message.author.id === "string" &&
     typeof message.author.name === "string" &&
+    typeof message.author.nickname === "string" &&
+    (message.author.avatarUrl === null || typeof message.author.avatarUrl === "string") &&
     typeof message.author.role === "string" &&
     Array.isArray(message.reactions) && message.reactions.every(isReaction)
   );
@@ -148,7 +149,10 @@ export default function ChatPage() {
   const reactionVersionRef = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const reactionPickerRef = useRef<HTMLDivElement>(null);
-  const reactionPickerTriggerRef = useRef<HTMLButtonElement>(null);
+  const reactionAnchorRef = useRef<HTMLElement | null>(null);
+  const longPressStartRef = useRef<LongPressStart | null>(null);
+  const longPressTimerRef = useRef<number | undefined>(undefined);
+  const suppressContextMenuRef = useRef(false);
   const gifFileRef = useRef<HTMLInputElement>(null);
   const stickerFileRef = useRef<HTMLInputElement>(null);
 
@@ -227,7 +231,7 @@ export default function ChatPage() {
     if (!reactionPicker) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!reactionPickerRef.current?.contains(target) && !reactionPickerTriggerRef.current?.contains(target)) {
+      if (!reactionPickerRef.current?.contains(target) && !reactionAnchorRef.current?.contains(target)) {
         setReactionPicker(null);
       }
     };
@@ -242,7 +246,7 @@ export default function ChatPage() {
     let closeTimer: number | undefined;
     const closeWhenPointerLeaves = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (reactionPickerRef.current?.contains(target) || reactionPickerTriggerRef.current?.contains(target)) {
+      if (reactionPickerRef.current?.contains(target) || reactionAnchorRef.current?.contains(target)) {
         if (closeTimer !== undefined) window.clearTimeout(closeTimer);
         closeTimer = undefined;
         return;
@@ -277,21 +281,60 @@ export default function ChatPage() {
     });
   }
 
-  function toggleReactionPicker(event: MouseEvent<HTMLButtonElement>, messageId: string) {
-    if (reactionPicker?.messageId === messageId) {
-      setReactionPicker(null);
-      return;
-    }
-    const rect = event.currentTarget.getBoundingClientRect();
+  function showReactionPicker(messageId: string, anchor: HTMLElement) {
+    const rect = anchor.getBoundingClientRect();
     const width = Math.min(344, Math.max(0, window.innerWidth - 16));
     const height = Math.min(390, window.innerHeight - 16);
-    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
-    const top = rect.top >= height
-      ? Math.max(8, rect.top - height)
-      : Math.max(8, Math.min(rect.bottom, window.innerHeight - height - 8));
+    const left = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 8));
+    const top = rect.top >= height + 8
+      ? Math.max(8, rect.top - height - 8)
+      : Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - height - 8));
     setEmojiSearch("");
     setEmojiCategory("all");
+    setMenu(null);
+    reactionAnchorRef.current = anchor;
     setReactionPicker({ messageId, left, top, width });
+  }
+
+  function clearLongPress(pointerId?: number) {
+    if (pointerId !== undefined && longPressStartRef.current?.pointerId !== pointerId) return;
+    if (longPressTimerRef.current !== undefined) window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = undefined;
+    longPressStartRef.current = null;
+  }
+
+  function beginMessageLongPress(event: ReactPointerEvent<HTMLElement>, messageId: string) {
+    if (event.button !== 0 || (event.target instanceof Element && event.target.closest("button, a, input, textarea"))) return;
+    clearLongPress();
+    const start: LongPressStart = {
+      pointerId: event.pointerId,
+      messageId,
+      x: event.clientX,
+      y: event.clientY,
+      anchor: event.currentTarget,
+    };
+    longPressStartRef.current = start;
+    longPressTimerRef.current = window.setTimeout(() => {
+      if (longPressStartRef.current !== start) return;
+      longPressTimerRef.current = undefined;
+      longPressStartRef.current = null;
+      suppressContextMenuRef.current = true;
+      window.setTimeout(() => { suppressContextMenuRef.current = false; }, 900);
+      showReactionPicker(messageId, start.anchor);
+    }, 520);
+  }
+
+  function moveMessageLongPress(event: ReactPointerEvent<HTMLElement>) {
+    const start = longPressStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12) clearLongPress(event.pointerId);
+  }
+
+  function handleMessageContextMenu(event: MouseEvent<HTMLElement>, messageId: string, isOwnMessage: boolean) {
+    event.preventDefault();
+    if (suppressContextMenuRef.current) return;
+    if (isOwnMessage) openMenu(event, messageId);
+    else showReactionPicker(messageId, event.currentTarget);
   }
 
   async function send(event: FormEvent<HTMLFormElement>) {
@@ -618,17 +661,31 @@ export default function ChatPage() {
               const stickerIsSaved = stickerSaveKey ? savedStickers.some((sticker) => sticker.key === stickerSaveKey) : false;
               return (
                   <div className={`chat-message-row${isOwnMessage ? " is-own" : ""}`} key={message.id}>
-                    {!isOwnMessage && <span className="chat-message-avatar" aria-hidden="true">{message.author.name.slice(0, 1).toUpperCase()}</span>}
+                    {!isOwnMessage && <MemberAvatar name={message.author.nickname} imageUrl={message.author.avatarUrl} size={27} className="chat-message-avatar" />}
                   <article
-                  onContextMenu={isOwnMessage ? (event) => openMenu(event, message.id) : undefined}
+                  onPointerDown={(event) => beginMessageLongPress(event, message.id)}
+                  onPointerMove={moveMessageLongPress}
+                  onPointerUp={(event) => clearLongPress(event.pointerId)}
+                  onPointerCancel={(event) => clearLongPress(event.pointerId)}
+                  onPointerLeave={(event) => clearLongPress(event.pointerId)}
+                  onContextMenu={(event) => handleMessageContextMenu(event, message.id, isOwnMessage)}
                     className="chat-message-bubble group"
                 >
                   <div className="chat-message-head">
-                      {!isOwnMessage && <span className="chat-message-author">{message.author.name}</span>}
+                      {!isOwnMessage && <span className="chat-message-author">{message.author.nickname}</span>}
                       {message.author.role === "ADMIN" && !isOwnMessage && <span className="text-[9px] text-muted">Mivo team</span>}
                       <time className="chat-message-time">
                         {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </time>
+                    <button
+                      type="button"
+                      onClick={(event) => showReactionPicker(message.id, event.currentTarget)}
+                      disabled={isMessageBusy}
+                      aria-label={`React to ${message.author.nickname}'s message`}
+                      className="sr-only focus:not-sr-only focus:rounded focus:bg-background focus:px-2 focus:py-1 focus:text-xs"
+                    >
+                      React
+                    </button>
                     {isOwnMessage && !isEditing && (
                       <button
                         type="button"
@@ -702,68 +759,18 @@ export default function ChatPage() {
                       <p className="chat-message-text">{message.content}</p>
                   )}
 
-                  <div className="mt-1 flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto [scrollbar-width:none]" aria-label="Message reactions">
-                    {message.kind === "STICKER" && (
-                      <button
-                        type="button"
-                        onClick={() => void toggleSavedSticker(message.mediaUrl ? { mediaUrl: message.mediaUrl } : { stickerKey: message.mediaKey ?? undefined })}
-                        aria-pressed={stickerIsSaved}
-                        title={stickerIsSaved ? "Remove saved sticker" : "Save sticker"}
-                        aria-label={stickerIsSaved ? "Remove saved sticker" : "Save sticker"}
-                        className="inline-grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs text-muted transition hover:bg-surface-raised hover:text-foreground"
-                      >
-                        <ReactionIcon glyph="bookmark" size={12} />
-                      </button>
-                    )}
-                    {QUICK_REACTIONS.map((option) => {
-                      const reaction = message.reactions.find((item) => item.emoji === option.emoji);
-                      return (
-                        <button
-                          key={option.emoji}
-                          type="button"
-                          onClick={() => void reactToMessage(message, option.emoji)}
-                          disabled={busyMessageId === message.id}
-                          aria-pressed={reaction?.reactedByMe ?? false}
-                          aria-label={`${option.label}${reaction ? `, ${reaction.count} reactions` : ""}${reaction?.reactedByMe ? ", remove your reaction" : ", react"}`}
-                          title={option.label}
-                          className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center gap-1 rounded-full px-1.5 text-[11px] transition disabled:opacity-50 ${reaction?.reactedByMe ? "bg-accent/10 text-accent" : "text-muted hover:bg-surface-raised hover:text-foreground"}`}
-                        >
-                          <span className="chat-emoji" aria-hidden="true">{option.emoji}</span>{reaction && <span className="text-[9px] leading-none">{reaction.count}</span>}
-                        </button>
-                      );
-                    })}
-                    {message.reactions.filter((reaction) => !QUICK_REACTIONS.some((option) => option.emoji === reaction.emoji)).map((reaction) => {
-                      const option = reactionOption(reaction.emoji);
-                      return (
-                        <button
-                          key={reaction.emoji}
-                          type="button"
-                          onClick={() => void reactToMessage(message, reaction.emoji)}
-                          disabled={busyMessageId === message.id}
-                          aria-pressed={reaction.reactedByMe}
-                          aria-label={`${option.label}, ${reaction.count} ${reaction.count === 1 ? "reaction" : "reactions"}${reaction.reactedByMe ? ", remove your reaction" : ", react"}`}
-                          title={option.label}
-                          className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-1.5 text-[11px] transition disabled:opacity-50 ${reaction.reactedByMe ? "bg-accent/10 text-accent" : "text-muted hover:bg-surface-raised hover:text-foreground"}`}
-                        >
-                          <span className="chat-emoji" aria-hidden="true">{reaction.emoji}</span><span>{reaction.count}</span>
-                        </button>
-                      );
-                    })}
-                    <div className="shrink-0">
-                      <button
-                        type="button"
-                        ref={reactionPicker?.messageId === message.id ? reactionPickerTriggerRef : null}
-                        onClick={(event) => toggleReactionPicker(event, message.id)}
-                        disabled={busyMessageId === message.id}
-                        aria-label="More reactions"
-                        aria-expanded={reactionPicker?.messageId === message.id}
-                        title="More reactions"
-                        className="chat-more-reactions inline-grid h-6 w-6 place-items-center rounded-full text-sm font-semibold leading-none text-muted transition hover:bg-surface-raised hover:text-foreground disabled:opacity-50"
-                      >
-                        <span aria-hidden="true">+</span>
-                      </button>
-                    </div>
-                  </div>
+                  {message.kind === "STICKER" && (
+                    <button
+                      type="button"
+                      onClick={() => void toggleSavedSticker(message.mediaUrl ? { mediaUrl: message.mediaUrl } : { stickerKey: message.mediaKey ?? undefined })}
+                      aria-pressed={stickerIsSaved}
+                      title={stickerIsSaved ? "Remove saved sticker" : "Save sticker"}
+                      aria-label={stickerIsSaved ? "Remove saved sticker" : "Save sticker"}
+                      className="mt-1 inline-grid h-6 w-6 place-items-center rounded-full text-xs text-muted transition hover:bg-surface-raised hover:text-foreground"
+                    >
+                      <ReactionIcon glyph="bookmark" size={12} />
+                    </button>
+                  )}
                   </article>
                   </div>
               );
@@ -784,6 +791,25 @@ export default function ChatPage() {
                 <div><p className="text-xs font-semibold">Choose a reaction</p><p className="mt-0.5 text-[10px] text-muted">Emoji</p></div>
                 <button type="button" onClick={() => setReactionPicker(null)} className="rounded-md px-2 py-1 text-sm text-muted hover:bg-surface-raised" aria-label="Close emoji picker">×</button>
               </div>
+              <div className="chat-emoji-picker-quick" aria-label="Quick reactions">
+                {QUICK_REACTIONS.map((option) => {
+                  const message = messages.find((item) => item.id === reactionPicker.messageId);
+                  const reaction = message?.reactions.find((item) => item.emoji === option.emoji);
+                  return (
+                    <button
+                      key={option.emoji}
+                      type="button"
+                      onClick={() => { if (message) void reactToMessage(message, option.emoji); }}
+                      disabled={busyMessageId === reactionPicker.messageId}
+                      aria-pressed={reaction?.reactedByMe ?? false}
+                      aria-label={`${option.label}${reaction ? `, ${reaction.count} reactions` : ""}`}
+                      title={option.label}
+                    >
+                      {option.emoji}
+                    </button>
+                  );
+                })}
+              </div>
               <input value={emojiSearch} onChange={(event) => setEmojiSearch(event.target.value)} placeholder="Search emoji" aria-label="Search emoji" className="mb-2 w-full rounded-md border border-border bg-background px-3 py-2 text-xs outline-none focus:border-accent" />
               <div className="chat-emoji-category-tabs" role="tablist" aria-label="Emoji categories">
                 {(Object.keys(REACTION_CATEGORIES) as ReactionCategory[]).map((category) => (
@@ -791,14 +817,25 @@ export default function ChatPage() {
                 ))}
               </div>
               <div className="chat-emoji-picker-grid">
-                {visibleEmojiOptions.map((option) => (
-                  <button key={option.emoji} type="button" onClick={() => {
-                    const message = messages.find((item) => item.id === reactionPicker.messageId);
-                    if (message) void reactToMessage(message, option.emoji);
-                  }} disabled={busyMessageId === reactionPicker.messageId} aria-label={`React with ${option.label}`} title={option.label} className="chat-picker-emoji-button">
-                    <span aria-hidden="true">{option.emoji}</span>
-                  </button>
-                ))}
+                {visibleEmojiOptions.map((option) => {
+                  const message = messages.find((item) => item.id === reactionPicker.messageId);
+                  const reaction = message?.reactions.find((item) => item.emoji === option.emoji);
+                  return (
+                    <button
+                      key={option.emoji}
+                      type="button"
+                      onClick={() => { if (message) void reactToMessage(message, option.emoji); }}
+                      disabled={busyMessageId === reactionPicker.messageId}
+                      aria-pressed={reaction?.reactedByMe ?? false}
+                      aria-label={`React with ${option.label}${reaction ? `, ${reaction.count} reactions` : ""}`}
+                      title={option.label}
+                      className={`chat-picker-emoji-button${reaction?.reactedByMe ? " is-selected" : ""}`}
+                    >
+                      <span aria-hidden="true">{option.emoji}</span>
+                      {reaction && <small aria-hidden="true">{reaction.count}</small>}
+                    </button>
+                  );
+                })}
                 {!visibleEmojiOptions.length && <p className="col-span-full px-2 py-4 text-center text-xs text-muted">No matching emoji.</p>}
               </div>
             </div>

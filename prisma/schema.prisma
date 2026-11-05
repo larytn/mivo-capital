@@ -9,9 +9,11 @@ datasource db {
 }
 
 model User {
-  id    String @id @default(cuid())
-  name  String
-  email String @unique
+  id        String  @id @default(cuid())
+  name      String
+  nickname  String  @unique
+  avatarUrl String?
+  email     String  @unique
 
   password     String?
   authProvider String  @default("EMAIL")
