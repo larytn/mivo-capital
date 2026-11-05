@@ -138,7 +138,7 @@ export default function Home() {
           {/* ECOSYSTEM PREVIEW */}
           <div className="relative mx-auto w-full max-w-xl">
             <div className="absolute -inset-5 rounded-[32px] bg-accent/[0.06] blur-2xl" />
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0d1210] shadow-2xl shadow-black/40">
+              <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#111214] shadow-2xl shadow-black/40">
               <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
                 <div>
                   <p className="text-sm font-bold">Your trading workspace</p>
@@ -217,7 +217,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="pointer-events-none absolute -bottom-5 -right-3 hidden rounded-xl border border-white/10 bg-[#111714] px-4 py-3 shadow-xl sm:block">
+              <div className="pointer-events-none absolute -bottom-5 -right-3 hidden rounded-xl border border-white/10 bg-[#191b1e] px-4 py-3 shadow-xl sm:block">
               <p className="text-xs font-semibold text-white">
                 More than a trading platform
               </p>
@@ -252,7 +252,7 @@ export default function Home() {
             {modules.map((module) => (
               <article
                 key={module.number}
-                className="group flex min-h-[285px] flex-col rounded-2xl border border-white/[0.09] bg-surface p-6 transition duration-300 hover:-translate-y-1 hover:border-accent/30 hover:bg-surface-raised sm:p-7"
+                className="group flex min-h-[285px] flex-col rounded-xl border border-white/[0.09] bg-surface p-6 transition duration-200 hover:border-accent/35 hover:bg-surface-raised sm:p-7"
               >
                 <div className="flex items-start justify-between">
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-accent/15 bg-accent/[0.07] text-xl text-accent">

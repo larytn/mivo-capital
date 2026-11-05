@@ -41,6 +41,14 @@ type FeedItem =
 
 const categories = ["All posts", "Market Analysis", "Discussion", "Announcements"];
 
+function CommunityIcon({ name }: { name: "like" | "comment" | "share" }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      {name === "like" ? <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6l1.2 1.2L12 21l7.6-7.6 1.2-1.2a5.4 5.4 0 0 0 0-7.6Z" /> : name === "comment" ? <path d="M20.5 11.6a8.5 8.5 0 0 1-9 8.4 9.6 9.6 0 0 1-4.2-.9L3 21l1.6-3.9A8 8 0 0 1 3 11.6C3 7 6.8 4 11.5 4s9 3 9 7.6Z" /> : <><path d="M12 16V3M7 8l5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></>}
+    </svg>
+  );
+}
+
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -406,37 +414,37 @@ export default function CommunityPage() {
     "w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent/60";
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <Link href="/dashboard" className="text-sm text-muted">← Workspace</Link>
-            <p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-accent">Mivo Capital / Community</p>
-            <h1 className="mt-2 text-4xl font-black">Feed &amp; discussions</h1>
-            <p className="mt-2 text-sm text-muted">Market ideas and conversations from the Mivo community.</p>
+    <main className="community-page">
+      <div className="community-feed-shell">
+        <header className="community-feed-header">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">Mivo Capital</p>
+              <h1 className="community-feed-title mt-1">Community</h1>
+            </div>
+            <Link href="/chat" className="rounded-md border border-border px-3 py-2 text-xs font-semibold text-muted transition hover:bg-surface hover:text-foreground">Trader chat</Link>
           </div>
-          <Link href="/chat" className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold transition hover:bg-surface">
-            Open the shared trader chat
-          </Link>
+          <div className="community-feed-tabs" role="tablist" aria-label="Community categories">
+            {categories.map((item) => (
+              <button
+                key={item}
+                type="button"
+                role="tab"
+                aria-selected={activeCategory === item}
+                onClick={() => { setActiveCategory(item); void markOfficialSectionRead(item); }}
+                className="community-tab"
+              >
+                {item}
+                {item === "Announcements" && unreadCounts.Announcements > 0 && <span className="ml-2 text-[10px] text-accent">{unreadCounts.Announcements > 99 ? "99+" : unreadCounts.Announcements}</span>}
+              </button>
+            ))}
+          </div>
         </header>
 
-        <div className="mt-8 flex items-center gap-3 rounded-2xl border border-border bg-surface p-3 sm:p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-black text-accent">M</div>
-          <button
-            type="button"
-            onClick={openNewComposer}
-            className="flex min-h-11 flex-1 items-center rounded-xl bg-background px-4 text-left text-sm text-muted transition hover:bg-surface-raised"
-          >
-            What&apos;s on your mind?
-          </button>
-          <button
-            type="button"
-            onClick={openNewComposer}
-            aria-label="Create a post"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-2xl font-semibold text-accent-foreground transition hover:bg-accent/90"
-          >
-            +
-          </button>
+        <div className="community-composer">
+          <div className="community-post-avatar" aria-hidden="true">M</div>
+          <button type="button" onClick={openNewComposer} className="community-compose-prompt">What&apos;s happening in the markets?</button>
+          <button type="button" onClick={openNewComposer} className="community-compose-submit">Post</button>
         </div>
         <p className="mt-2 px-1 text-xs text-muted">
           {moderationConfigured === false
@@ -444,44 +452,15 @@ export default function CommunityPage() {
             : "AI reviews member posts first. Clear, suitable posts appear right away; uncertain reviews stay private for the Mivo team."}
         </p>
 
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {categories.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => {
-                  setActiveCategory(item);
-                  void markOfficialSectionRead(item);
-                }}
-                aria-pressed={activeCategory === item}
-                className={
-                  "shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition " +
-                  (activeCategory === item
-                    ? "border-accent bg-accent text-accent-foreground"
-                    : "border-border text-muted hover:bg-surface")
-                }
-              >
-                {item}
-                {item === "Announcements" && unreadCounts.Announcements > 0 && (
-                  <span
-                    aria-label={`${unreadCounts.Announcements} new announcements`}
-                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
-                  >
-                    {unreadCounts.Announcements > 99 ? "99+" : unreadCounts.Announcements}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+        <div className="px-5 py-3 sm:px-6">
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search community posts"
-            className={field + " sm:ml-auto sm:max-w-xs"}
+            className="community-search"
           />
         </div>
-        <p className="mt-2 px-1 text-xs text-muted">Announcements are published by the Mivo team and are view-only for members.</p>
+        <p className="px-5 pb-3 text-[10px] text-muted sm:px-6">Announcements are published by the Mivo team and are view-only for members.</p>
 
         {notice && (
           <p role="status" className="mt-4 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
@@ -492,24 +471,20 @@ export default function CommunityPage() {
         {loading ? (
           <p className="mt-8 text-sm text-muted">Loading community posts…</p>
         ) : (
-          <div className="mt-5 space-y-4">
+          <div>
             {visibleItems.map((item) => {
               if (item.kind === "official") {
                 const post = item.post;
                 return (
-                  <article key={item.id} className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+                  <article key={item.id} className="community-post">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
-                          Mivo announcement
-                        </p>
-                        <p className="mt-1 text-xs text-muted">{formatDate(post.createdAt)}</p>
+                        <div className="community-post-author"><span className="community-post-avatar">M</span><p className="truncate text-sm font-semibold">Mivo team</p><time className="text-xs text-muted">{formatDate(post.createdAt)}</time></div>
                       </div>
-                      <span className="rounded-full bg-surface-raised px-3 py-1 text-xs text-muted">{item.category}</span>
+                      <span className="community-post-category">{item.category}</span>
                     </div>
-                    <h2 className="mt-4 text-lg font-bold">{post.title}</h2>
-                    <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-foreground/90">{post.body}</p>
-                    <p className="mt-4 text-xs text-muted">Published by {post.createdBy.name}</p>
+                    <h2 className="community-post-title">{post.title}</h2>
+                    <p className="community-post-content">{post.body}</p>
                   </article>
                 );
               }
@@ -522,17 +497,14 @@ export default function CommunityPage() {
                 <article
                   id={"post-" + post.id}
                   key={post.id}
-                  className="scroll-mt-24 rounded-2xl border border-border bg-surface p-5 sm:p-6"
+                  className="community-post scroll-mt-24"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {post.author.name}
-                        <span className="ml-2 text-xs font-normal text-muted">
-                          {post.author.role === "ADMIN" ? "Mivo team" : "Member"}
-                        </span>
-                      </p>
-                      <p className="mt-1 text-xs text-muted">{formatDate(post.createdAt)}</p>
+                    <div className="community-post-author">
+                      <span className="community-post-avatar" aria-hidden="true">{post.author.name.slice(0, 1).toUpperCase()}</span>
+                      <span className="min-w-0 truncate text-sm font-semibold">{post.author.name}</span>
+                      {post.author.role === "ADMIN" && <span className="truncate text-[10px] text-accent">Mivo team</span>}
+                      <time className="shrink-0 text-xs text-muted">· {formatDate(post.createdAt)}</time>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                       {post.author.id === currentUserId && (
@@ -541,7 +513,7 @@ export default function CommunityPage() {
                             type="button"
                             onClick={() => openEditComposer(post)}
                             disabled={busy}
-                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold transition hover:bg-background disabled:opacity-50"
+                            className="rounded-md border border-border px-2.5 py-1 text-[10px] font-semibold transition hover:bg-background disabled:opacity-50"
                           >
                             Edit
                           </button>
@@ -549,13 +521,13 @@ export default function CommunityPage() {
                             type="button"
                             onClick={() => void deletePost(post)}
                             disabled={busy}
-                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                            className="rounded-md border border-border px-2.5 py-1 text-[10px] font-semibold text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
                           >
                             Delete
                           </button>
                         </>
                       )}
-                      <span className="rounded-full bg-surface-raised px-3 py-1 text-xs text-muted">{post.category}</span>
+                      <span className="community-post-category hidden sm:inline-flex">{post.category}</span>
                     </div>
                   </div>
                   {post.moderationStatus !== "APPROVED" && post.author.id === currentUserId && (
@@ -565,15 +537,15 @@ export default function CommunityPage() {
                         : "This post is private while it waits for review."}
                     </p>
                   )}
-                  {showTitle && <h2 className="mt-4 text-lg font-bold">{post.title}</h2>}
-                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-foreground/90">{post.content}</p>
+                  {showTitle && <h2 className="community-post-title">{post.title}</h2>}
+                  <p className="community-post-content">{post.content}</p>
                   {post.imageUrl && (
                     <a href={post.imageUrl} target="_blank" rel="noreferrer" className="mt-4 inline-block max-w-full">
                       <img
                         src={post.imageUrl}
                         alt="Chart screenshot shared with this post"
                         loading="lazy"
-                        className="max-h-[560px] max-w-full rounded-xl border border-border object-contain"
+                        className="community-post-media"
                       />
                     </a>
                   )}
@@ -588,35 +560,38 @@ export default function CommunityPage() {
                     </a>
                   )}
 
-                  {post.moderationStatus === "APPROVED" && <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-3">
+                  {post.moderationStatus === "APPROVED" && <div className="community-post-actions">
                     <button
                       type="button"
                       disabled={busy}
                       aria-pressed={post.likedByMe}
                       onClick={() => void interact(post, "like")}
-                      className={"text-sm transition hover:text-accent disabled:opacity-50 " + (post.likedByMe ? "font-semibold text-accent" : "text-muted")}
+                      aria-label={`${post.likedByMe ? "Unlike" : "Like"} post`}
+                      className={`community-post-action${post.likedByMe ? " is-liked" : ""}`}
                     >
-                      {post.likedByMe ? "♥ Liked" : "♡ Like"} · {post.likesCount}
+                      <CommunityIcon name="like" /><span>{post.likesCount}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setOpenComments((current) => ({ ...current, [post.id]: !current[post.id] }))}
                       aria-expanded={commentsOpen}
-                      className="text-sm text-muted transition hover:text-foreground"
+                      aria-label={`${commentsOpen ? "Hide" : "Show"} comments`}
+                      className="community-post-action"
                     >
-                      ◯ Comment · {post.comments.length}
+                      <CommunityIcon name="comment" /><span>{post.comments.length}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => void share(post)}
-                      className="text-sm text-muted transition hover:text-foreground"
+                      aria-label="Share post"
+                      className="community-post-action"
                     >
-                      ↗ Share
+                      <CommunityIcon name="share" /><span>Share</span>
                     </button>
                   </div>}
 
                   {post.moderationStatus === "APPROVED" && commentsOpen && (
-                    <section aria-label="Comments" className="mt-4 border-t border-border pt-4">
+                    <section aria-label="Comments" className="community-post-comments">
                       <div className="space-y-4">
                         {post.comments.map((comment) => (
                           <div key={comment.id} className="flex gap-3">

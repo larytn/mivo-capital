@@ -45,23 +45,18 @@ const GIFS = [
 ] as const;
 
 const NAMED_REACTION_OPTIONS: ReactionOption[] = [
-  { emoji: "❤️", label: "Love" },
-  { emoji: "🔥", label: "Fire" },
-  { emoji: "😂", label: "Funny" },
   { emoji: "👍", label: "Like" },
-  { emoji: "👎", label: "Disagree" },
-  { emoji: "💡", label: "Insight" },
+  { emoji: "❤️", label: "Love" },
+  { emoji: "😂", label: "Funny" },
+  { emoji: "🙏", label: "Thanks" },
   { emoji: "👀", label: "Watching" },
   { emoji: "✅", label: "Agreed" },
   { emoji: "📈", label: "Bullish" },
   { emoji: "📉", label: "Bearish" },
-  { emoji: "🎯", label: "On target" },
   { emoji: "⚠️", label: "Risk alert" },
 ];
-const REACTION_OPTIONS: ReactionOption[] = CHAT_REACTION_EMOJIS.map((emoji) =>
-  NAMED_REACTION_OPTIONS.find((option) => option.emoji === emoji) ?? { emoji, label: emoji },
-);
-const QUICK_REACTIONS = ["❤️", "🔥", "😂"]
+const REACTION_OPTIONS = NAMED_REACTION_OPTIONS;
+const QUICK_REACTIONS = ["👍", "❤️", "✅"]
   .map((emoji) => REACTION_OPTIONS.find((option) => option.emoji === emoji))
   .filter((option): option is ReactionOption => !!option);
 const REACTION_CATEGORIES = {
@@ -146,6 +141,7 @@ export default function ChatPage() {
   const [reactionPicker, setReactionPicker] = useState<ReactionPicker>(null);
   const [emojiSearch, setEmojiSearch] = useState("");
   const [emojiCategory, setEmojiCategory] = useState<ReactionCategory>("all");
+  const [composerEmojiOpen, setComposerEmojiOpen] = useState(false);
   const [mediaPicker, setMediaPicker] = useState<MediaPicker>(null);
   const [stickerTab, setStickerTab] = useState<"SAVED" | "MIVO">("MIVO");
   const loadingRef = useRef(false);
@@ -576,17 +572,36 @@ export default function ChatPage() {
   });
 
   return (
-    <main className="min-h-screen bg-background px-5 py-8 text-foreground">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl flex-col">
-        <Link href="/community" className="text-sm text-muted">← Community</Link>
-        <header className="mt-6 border-b border-border pb-5">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted">Mivo Capital · Members</p>
-          <h1 className="mt-2 text-3xl font-black">Trader chat room</h1>
-          <p className="mt-2 text-sm text-muted">A shared room for market conversation and community questions.</p>
-        </header>
+    <main className="chat-page text-foreground">
+      <div className="chat-layout">
+        <aside className="chat-room-list" aria-label="Conversations">
+          <div className="chat-room-list-heading"><h2>Chats</h2><span className="text-[10px] text-muted">MIVO</span></div>
+          <Link href="/chat" className="chat-room-item" aria-current="page">
+            <span className="chat-room-avatar">MT</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">Mivo Traders</span>
+              <span className="chat-room-preview mt-1 block">Shared market conversation</span>
+            </span>
+          </Link>
+          <div className="mt-auto border-t border-border p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Group chat</p>
+            <p className="mt-2 text-xs leading-5 text-muted">Discuss markets and trade ideas with the Mivo community.</p>
+            <Link href="/community" className="mt-4 inline-flex text-xs font-semibold text-accent hover:underline">Open community feed</Link>
+          </div>
+        </aside>
 
-        <section
-          className="my-5 flex-1 overflow-y-auto px-1 py-1"
+        <section className="chat-conversation" aria-label="Mivo Traders group conversation">
+          <header className="chat-room-header">
+            <span className="chat-room-avatar">MT</span>
+            <div className="chat-room-header-copy">
+              <h1>Mivo Traders</h1>
+              <p>Shared group · Market talk and trade ideas</p>
+            </div>
+            <Link href="/community" aria-label="Open community feed" title="Open community feed" className="rounded-md px-3 py-2 text-xs font-semibold text-muted transition hover:bg-surface-raised hover:text-foreground">Community</Link>
+          </header>
+
+          <section
+            className="chat-messages"
           aria-label="Chat messages"
           aria-live="polite"
         >
@@ -602,19 +617,18 @@ export default function ChatPage() {
                 : null;
               const stickerIsSaved = stickerSaveKey ? savedStickers.some((sticker) => sticker.key === stickerSaveKey) : false;
               return (
-                <article
-                  key={message.id}
+                  <div className={`chat-message-row${isOwnMessage ? " is-own" : ""}`} key={message.id}>
+                    {!isOwnMessage && <span className="chat-message-avatar" aria-hidden="true">{message.author.name.slice(0, 1).toUpperCase()}</span>}
+                  <article
                   onContextMenu={isOwnMessage ? (event) => openMenu(event, message.id) : undefined}
-                  className="group relative py-2"
+                    className="chat-message-bubble group"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate text-xs font-semibold">{message.author.name}</span>
-                      {message.author.role === "ADMIN" && <span className="text-[10px] text-muted">Mivo team</span>}
-                      <time className="shrink-0 text-[10px] text-muted">
+                  <div className="chat-message-head">
+                      {!isOwnMessage && <span className="chat-message-author">{message.author.name}</span>}
+                      {message.author.role === "ADMIN" && !isOwnMessage && <span className="text-[9px] text-muted">Mivo team</span>}
+                      <time className="chat-message-time">
                         {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </time>
-                    </div>
                     {isOwnMessage && !isEditing && (
                       <button
                         type="button"
@@ -622,7 +636,7 @@ export default function ChatPage() {
                         disabled={isMessageBusy}
                         aria-label="Message options"
                         aria-haspopup="menu"
-                        className="rounded-md px-2 py-1 text-muted opacity-100 transition hover:bg-background hover:text-foreground focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                        className="rounded-md px-1.5 py-0.5 text-muted transition hover:bg-background hover:text-foreground"
                       >
                         <span aria-hidden="true">•••</span>
                       </button>
@@ -685,7 +699,7 @@ export default function ChatPage() {
                       );
                     })()
                   ) : (
-                    <p className="mt-0.5 whitespace-pre-wrap break-words text-[13px] leading-5">{message.content}</p>
+                      <p className="chat-message-text">{message.content}</p>
                   )}
 
                   <div className="mt-1 flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto [scrollbar-width:none]" aria-label="Message reactions">
@@ -750,7 +764,8 @@ export default function ChatPage() {
                       </button>
                     </div>
                   </div>
-                </article>
+                  </article>
+                  </div>
               );
             })
           )}
@@ -822,6 +837,7 @@ export default function ChatPage() {
           </div>
         )}
 
+        <div className="chat-composer-wrap">
         {mediaPicker && (
           <section className="chat-media-picker mb-3 rounded-xl border border-border bg-surface p-3" aria-label={mediaPicker === "STICKER" ? "Sticker picker" : "GIF picker"}>
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -897,26 +913,30 @@ export default function ChatPage() {
         )}
 
         {error && <p role="status" className="mb-3 text-sm text-red-400">{error}</p>}
-        <form onSubmit={(event) => void send(event)} className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setMediaPicker((current) => current === "STICKER" ? null : "STICKER")} aria-expanded={mediaPicker === "STICKER"} className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${mediaPicker === "STICKER" ? "border-accent text-accent" : "border-border text-muted hover:text-foreground"}`}><ReactionIcon glyph="sticker" size={13} /> Sticker</button>
-          <button type="button" onClick={() => setMediaPicker((current) => current === "GIF" ? null : "GIF")} aria-expanded={mediaPicker === "GIF"} className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold transition ${mediaPicker === "GIF" ? "border-accent text-accent" : "border-border text-muted hover:text-foreground"}`}>GIF</button>
-          <div className="flex min-w-0 basis-full gap-2 sm:basis-0 sm:flex-1">
-            <input
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              maxLength={1500}
-              placeholder="Write a message…"
-              className="min-w-0 flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none"
-            />
-            <button
-              disabled={busy || !content.trim()}
-              className="shrink-0 rounded-xl bg-foreground px-5 py-3 text-sm font-bold text-background disabled:opacity-50"
-            >
-              Send
-            </button>
-          </div>
+        {composerEmojiOpen && <div className="chat-composer-emoji-list" role="group" aria-label="Insert an emoji">
+          {NAMED_REACTION_OPTIONS.map((option) => <button key={option.emoji} type="button" onClick={() => { setContent((current) => current + option.emoji); setComposerEmojiOpen(false); }} aria-label={`Insert ${option.label}`} title={option.label} className="chat-composer-emoji">{option.emoji}</button>)}
+        </div>}
+        <form onSubmit={(event) => void send(event)} className="chat-composer">
+          <button type="button" onClick={() => setComposerEmojiOpen((open) => !open)} aria-label="Add emoji" aria-expanded={composerEmojiOpen} className="chat-composer-action">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M8 14.5s1.3 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01" /></svg>
+          </button>
+          <button type="button" onClick={() => setMediaPicker((current) => current === "STICKER" ? null : "STICKER")} aria-expanded={mediaPicker === "STICKER"} aria-label="Choose a sticker" className={`chat-composer-action ${mediaPicker === "STICKER" ? "text-accent" : ""}`}><ReactionIcon glyph="sticker" size={16} /><span className="hidden sm:inline">Sticker</span></button>
+          <button type="button" onClick={() => setMediaPicker((current) => current === "GIF" ? null : "GIF")} aria-expanded={mediaPicker === "GIF"} aria-label="Choose a GIF" className={`chat-composer-action ${mediaPicker === "GIF" ? "text-accent" : ""}`}>GIF</button>
+          <input
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            maxLength={1500}
+            placeholder="Message the group"
+            aria-label="Message the Mivo Traders group"
+            className="chat-composer-input"
+          />
+          <button type="submit" disabled={busy || !content.trim()} aria-label="Send message" title="Send message" className="chat-send-button">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m21 3-7.1 18-3.3-7.6L3 10.1 21 3Z" /><path d="M10.6 13.4 21 3" /></svg>
+          </button>
         </form>
-        <p className="mt-2 text-right text-xs text-muted">Messages refresh when this room is active.</p>
+        <p className="mt-2 text-right text-[10px] text-muted">Messages refresh while this group is open.</p>
+        </div>
+        </section>
       </div>
     </main>
   );
