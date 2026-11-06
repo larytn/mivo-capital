@@ -4,7 +4,8 @@ import { verifyToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const MAX_MEDIA_SIZE = 4 * 1024 * 1024;
+const MAX_STICKER_OR_GIF_SIZE = 4 * 1024 * 1024;
+const MAX_CHAT_IMAGE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
@@ -16,21 +17,22 @@ export async function POST(request: NextRequest) {
 
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-    return NextResponse.json({ error: "GIF uploads are not configured yet. You can still send a built-in GIF." }, { status: 503 });
+    return NextResponse.json({ error: "Chat media uploads are not configured yet." }, { status: 503 });
   }
 
   try {
     const formData = await request.formData();
     const file = formData.get("file");
     const kind = formData.get("kind");
-    if (kind !== "GIF" && kind !== "STICKER") {
-      return NextResponse.json({ error: "Choose a GIF or sticker upload." }, { status: 400 });
+    if (kind !== "IMAGE" && kind !== "GIF" && kind !== "STICKER") {
+      return NextResponse.json({ error: "Choose an image, GIF, or sticker upload." }, { status: 400 });
     }
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Choose a file to upload." }, { status: 400 });
     }
-    if (!file.size || file.size > MAX_MEDIA_SIZE) {
-      return NextResponse.json({ error: "Sticker and GIF files must be 4 MB or smaller." }, { status: 400 });
+    const maxSize = kind === "IMAGE" ? MAX_CHAT_IMAGE_SIZE : MAX_STICKER_OR_GIF_SIZE;
+    if (!file.size || file.size > maxSize) {
+      return NextResponse.json({ error: kind === "IMAGE" ? "Images must be 10 MB or smaller." : "Sticker and GIF files must be 4 MB or smaller." }, { status: 400 });
     }
 
     const bytes = Buffer.from(await file.arrayBuffer());
@@ -41,6 +43,9 @@ export async function POST(request: NextRequest) {
     const isWebp = bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP";
     if (kind === "GIF" && !isGif) {
       return NextResponse.json({ error: "Choose a real animated GIF file." }, { status: 415 });
+    }
+    if (kind === "IMAGE" && !(isPng || isJpeg || isWebp)) {
+      return NextResponse.json({ error: "Choose a JPG, PNG, or WEBP image." }, { status: 415 });
     }
     if (kind === "STICKER" && !(isGif || isPng || isJpeg || isWebp)) {
       return NextResponse.json({ error: "Sticker files must be GIF, PNG, JPG, or WEBP." }, { status: 415 });
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: uploaded.secure_url });
   } catch (error) {
-    console.error("CHAT GIF UPLOAD ERROR:", error);
-    return NextResponse.json({ error: "Mivo could not upload that GIF. Please try again." }, { status: 503 });
+    console.error("CHAT MEDIA UPLOAD ERROR:", error);
+    return NextResponse.json({ error: "Mivo could not upload that media. Please try again." }, { status: 503 });
   }
 }

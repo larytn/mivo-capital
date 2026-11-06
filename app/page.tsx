@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/app/components/brand-logo";
 
 const modules = [
   { number: "01", icon: "C", name: "Community", description: "Share market ideas, discuss setups, and learn alongside other traders.", href: "/community", label: "Explore community", tag: "SOCIAL" },
@@ -36,17 +37,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
           <Link href="/" className="flex shrink-0 items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-lg font-black text-accent">
-              M
-            </span>
-            <span>
-              <span className="block text-sm font-black tracking-[0.16em]">
-                MIVO CAPITAL
-              </span>
-              <span className="mt-1 block text-[9px] tracking-[0.22em] text-zinc-500">
-                THE TRADING ECOSYSTEM
-              </span>
-            </span>
+            <BrandLogo className="h-[66px] w-[124px]" priority />
           </Link>
 
           <nav className="hidden items-center gap-7 text-sm text-zinc-400 lg:flex">
@@ -362,8 +353,8 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             <div className="lg:col-span-2">
-              <Link href="/" className="text-lg font-black tracking-[0.16em]">
-                MIVO <span className="text-accent">CAPITAL</span>
+              <Link href="/" aria-label="Mivo Capital home" className="inline-flex">
+                <BrandLogo className="h-24 w-40" tone="dark" />
               </Link>
               <p className="mt-4 max-w-sm text-sm leading-7 text-zinc-500">
                 A growing ecosystem for trading education, research, journaling,

@@ -8,6 +8,8 @@ type SettingsUser = {
   id: string;
   name: string;
   nickname: string;
+  canChangeNickname: boolean;
+  nicknameChangeAvailableAt: string | null;
   avatarUrl: string | null;
   email: string;
   authProvider: string;
@@ -19,7 +21,6 @@ export default function SettingsPage() {
   const [user, setUser] =
     useState<SettingsUser | null>(null);
 
-  const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -82,7 +83,6 @@ export default function SettingsPage() {
       }
 
       setUser(data.user);
-      setName(data.user.name);
       setNickname(data.user.nickname);
       setAvatarUrl(data.user.avatarUrl ?? null);
     } catch (error) {
@@ -104,12 +104,13 @@ export default function SettingsPage() {
   }, []);
 
   async function updateProfile() {
-    if (!name.trim()) {
-      setProfileError("Please enter your full name.");
-      return;
-    }
     if (!/^[\p{L}\p{N}._-]{3,24}$/u.test(nickname.trim())) {
       setProfileError("Nickname must be 3–24 letters, numbers, dots, underscores or hyphens.");
+      return;
+    }
+    if (!user) return;
+    if (nicknameLocked && nickname.trim() !== user.nickname) {
+      setProfileError("Your nickname is locked until the next monthly change date. Contact Support if you need help sooner.");
       return;
     }
 
@@ -130,7 +131,6 @@ export default function SettingsPage() {
 
           body: JSON.stringify({
             action: "UPDATE_PROFILE",
-            name: name.trim(),
             nickname: nickname.trim(),
             avatarUrl,
           }),
@@ -162,8 +162,9 @@ export default function SettingsPage() {
         current
           ? {
               ...current,
-              name: data.user.name,
               nickname: data.user.nickname,
+              canChangeNickname: data.user.canChangeNickname,
+              nicknameChangeAvailableAt: data.user.nicknameChangeAvailableAt ?? null,
               avatarUrl: data.user.avatarUrl ?? null,
             }
           : current
@@ -217,6 +218,16 @@ export default function SettingsPage() {
       setUploadingAvatar(false);
     }
   }
+
+  const nicknameChangeDate = user?.nicknameChangeAvailableAt
+    ? new Date(user.nicknameChangeAvailableAt)
+    : null;
+  const nicknameLocked = Boolean(user && !user.canChangeNickname);
+  const nicknameChangeDateLabel = nicknameChangeDate?.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   async function updatePassword() {
     setPasswordError("");
@@ -463,38 +474,32 @@ export default function SettingsPage() {
                 type="text"
                 value={nickname}
                 maxLength={24}
+                readOnly={nicknameLocked}
                 onChange={(event) => setNickname(event.target.value.replace(/\s/g, ""))}
                 aria-describedby="settings-nickname-help"
-                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm outline-none transition focus:border-green-500"
+                className={`w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm outline-none transition focus:border-green-500 ${nicknameLocked ? "cursor-not-allowed opacity-60" : ""}`}
               />
               <p id="settings-nickname-help" className="mt-2 text-[10px] text-gray-600 sm:text-xs">
-                3–24 letters, numbers, dots, underscores or hyphens.
+                {nicknameLocked && nicknameChangeDateLabel
+                  ? <>Locked until {nicknameChangeDateLabel}. <Link href="/support" className="text-green-500 hover:underline">Contact Support</Link> if you need help sooner.</>
+                  : "You can change your nickname once per calendar month. Use 3–24 letters, numbers, dots, underscores or hyphens."}
               </p>
             </div>
 
             <div>
-              <label
-                htmlFor="name"
-                className="mb-2 block text-xs font-medium text-gray-400 sm:text-sm"
-              >
+              <p className="mb-2 block text-xs font-medium text-gray-400 sm:text-sm">
                 Full Name
-              </label>
-
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(event) =>
-                  setName(
-                    event.target.value
-                  )
-                }
-                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3.5 text-sm outline-none transition focus:border-green-500"
-              />
+              </p>
+              <p className="min-h-11 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm text-gray-300">
+                {user?.name || "—"}
+              </p>
+              <p className="mt-2 text-[10px] text-gray-600 sm:text-xs">
+                Set during registration. <Link href="/support" className="text-green-500 hover:underline">Contact Support</Link> if it needs correction.
+              </p>
             </div>
 
             <div className="flex items-center gap-4 sm:col-span-2">
-              <MemberAvatar name={nickname || name} imageUrl={avatarUrl} size={60} className="text-base" />
+              <MemberAvatar name={nickname || user?.name || "Trader"} imageUrl={avatarUrl} size={60} className="text-base" />
               <div className="min-w-0">
                 <label htmlFor="avatar-upload" className="inline-flex cursor-pointer rounded-lg border border-zinc-700 px-4 py-2.5 text-xs font-bold transition hover:border-green-500 hover:text-green-400">
                   {uploadingAvatar ? "Uploading photo…" : avatarUrl ? "Change profile photo" : "Add profile photo"}
@@ -542,7 +547,6 @@ export default function SettingsPage() {
             disabled={
               savingProfile ||
               uploadingAvatar ||
-              !name.trim() ||
               !nickname.trim()
             }
             className="mt-6 w-full rounded-xl bg-green-500 px-6 py-3.5 text-sm font-black text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"

@@ -2,23 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 import { databaseErrorMessage } from "@/lib/database-error";
-import { CHAT_REACTION_EMOJIS, CHAT_STICKERS } from "@/lib/chat-catalog";
+import { CHAT_GIFS, CHAT_NEW_STICKERS, CHAT_REACTION_EMOJIS } from "@/lib/chat-catalog";
 
 export const dynamic = "force-dynamic";
 
 const REACTION_EMOJIS = new Set<string>(CHAT_REACTION_EMOJIS);
-const STICKER_LABELS = Object.fromEntries(CHAT_STICKERS.map((sticker) => [sticker.key, sticker.label]));
-const GIF_LABELS: Record<string, string> = {
-  rocket: "To the moon",
-  celebrate: "Celebrate",
-  laugh: "That was funny",
-  mindblown: "Mind blown",
-  focus: "Locked in",
-  gg: "Good game",
-  cry: "Pain",
-  fire: "Fire setup",
-  clap: "Well played",
-};
+const STICKER_LABELS = Object.fromEntries(CHAT_NEW_STICKERS.map((sticker) => [sticker.key, sticker.label]));
+const GIF_LABELS = Object.fromEntries(CHAT_GIFS.map((gif) => [gif.key, gif.label]));
 
 type ReactionRecord = { emoji: string; userId: string };
 
@@ -31,6 +21,10 @@ function isMivoUploadUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function isMivoImageUploadUrl(value: string) {
+  return isMivoUploadUrl(value) && !value.toLowerCase().split("?")[0].endsWith(".gif");
 }
 
 function memberId(request: NextRequest): string | null {
@@ -74,6 +68,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         include: {
           author: { select: { id: true, name: true, nickname: true, avatarUrl: true, role: true } },
+          replyTo: { select: { id: true, content: true, kind: true, mediaKey: true, mediaUrl: true, author: { select: { id: true, nickname: true } } } },
           reactions: { select: { emoji: true, userId: true } },
         },
       }),
@@ -99,15 +94,26 @@ export async function POST(request: NextRequest) {
   if (!authorId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const kind = body.kind === "STICKER" || body.kind === "GIF" ? body.kind : "TEXT";
+    const kind = body.kind === "IMAGE" || body.kind === "STICKER" || body.kind === "GIF" ? body.kind : "TEXT";
     const mediaKey = typeof body.mediaKey === "string" ? body.mediaKey : "";
     const mediaUrl = typeof body.mediaUrl === "string" ? body.mediaUrl : "";
+    const replyToId = typeof body.replyToId === "string" ? body.replyToId.trim() : "";
     let content = typeof body.content === "string" ? body.content.trim() : "";
+
+    if (replyToId) {
+      const replyTarget = await prisma.chatMessage.findUnique({ where: { id: replyToId }, select: { id: true } });
+      if (!replyTarget) return NextResponse.json({ error: "The message you are replying to is no longer available." }, { status: 404 });
+    }
 
     if (kind === "TEXT") {
       if (!content || content.length > 1500) {
         return NextResponse.json({ error: "Messages must be between 1 and 1,500 characters." }, { status: 400 });
       }
+    } else if (kind === "IMAGE") {
+      if (!mediaUrl || !isMivoImageUploadUrl(mediaUrl)) {
+        return NextResponse.json({ error: "Choose an image uploaded to Mivo." }, { status: 400 });
+      }
+      content = "Photo";
     } else if (kind === "STICKER") {
       if (mediaUrl) {
         if (!isMivoUploadUrl(mediaUrl)) {
@@ -139,9 +145,11 @@ export async function POST(request: NextRequest) {
         kind,
         mediaKey: kind === "TEXT" || mediaUrl ? null : mediaKey,
         mediaUrl: kind !== "TEXT" && mediaUrl ? mediaUrl : null,
+        replyToId: replyToId || null,
       },
       include: {
         author: { select: { id: true, name: true, nickname: true, avatarUrl: true, role: true } },
+        replyTo: { select: { id: true, content: true, kind: true, mediaKey: true, mediaUrl: true, author: { select: { id: true, nickname: true } } } },
         reactions: { select: { emoji: true, userId: true } },
       },
     });
@@ -174,6 +182,7 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       include: {
         author: { select: { id: true, name: true, nickname: true, avatarUrl: true, role: true } },
+        replyTo: { select: { id: true, content: true, kind: true, mediaKey: true, mediaUrl: true, author: { select: { id: true, nickname: true } } } },
         reactions: { select: { emoji: true, userId: true } },
       },
     });
@@ -198,11 +207,10 @@ export async function PUT(request: NextRequest) {
     const messageExists = await prisma.chatMessage.findUnique({ where: { id: messageId }, select: { id: true } });
     if (!messageExists) return NextResponse.json({ error: "That message is no longer available." }, { status: 404 });
 
-    await prisma.chatReaction.upsert({
-      where: { messageId_userId_emoji: { messageId, userId, emoji } },
-      create: { messageId, userId, emoji },
-      update: {},
-    });
+    await prisma.$transaction([
+      prisma.chatReaction.deleteMany({ where: { messageId, userId } }),
+      prisma.chatReaction.create({ data: { messageId, userId, emoji } }),
+    ]);
     return NextResponse.json({ reactions: await reactionSummary(messageId, userId) });
   } catch (error) {
     console.error("CHAT REACTION PUT ERROR:", error);

@@ -13,6 +13,7 @@ model User {
   name      String
   nickname  String  @unique
   avatarUrl String?
+  nicknameChangedAt DateTime?
   email     String  @unique
 
   password     String?
@@ -195,11 +196,15 @@ model ChatMessage {
   kind      String   @default("TEXT")
   mediaKey  String?
   mediaUrl  String?
+  replyToId String?
   createdAt DateTime @default(now())
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replyTo   ChatMessage? @relation("ChatMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[] @relation("ChatMessageReplies")
   reactions ChatReaction[]
 
   @@index([createdAt])
+  @@index([replyToId])
 }
 
 model ChatReaction {

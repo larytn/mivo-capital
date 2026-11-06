@@ -5,7 +5,80 @@ export const CHAT_REACTION_EMOJIS = [
   "🔥", "💯", "✅", "⭐", "🌟", "✨", "🎉", "🎊", "🏆", "🎯", "🚀", "💰", "💸", "📈", "📉", "🐂", "🐻", "💎", "👑", "🌈", "🍀", "☕", "💡",
 ] as const;
 
-export const CHAT_STICKERS = [
+export type ChatStickerDefinition = { key: string; emoji: string; label: string; spriteIndex?: number; spriteSheet?: string };
+export type ChatGifDefinition = {
+  key: string;
+  label: string;
+  emoji: string;
+  caption: string;
+  animation: "bounce" | "shake" | "pop" | "cry" | "blink" | "cheer" | "facepalm" | "float" | "pulse" | "spin" | "run" | "melt" | "sleep" | "wink";
+};
+
+const ALL_CHAT_STICKERS: ChatStickerDefinition[] = [
+  { key: "mivo-bull", emoji: "🐂", label: "Bullish", spriteIndex: 0 },
+  { key: "mivo-bear", emoji: "🐻", label: "Steady bear", spriteIndex: 1 },
+  { key: "mivo-analyst", emoji: "🦉", label: "Market analyst", spriteIndex: 2 },
+  { key: "mivo-rocket", emoji: "🚀", label: "Launch", spriteIndex: 3 },
+  { key: "mivo-trophy", emoji: "🏆", label: "Diamond trophy", spriteIndex: 4 },
+  { key: "mivo-focus", emoji: "🎯", label: "Focused trader", spriteIndex: 5 },
+  { key: "mivo-coffee", emoji: "☕", label: "Coffee and charts", spriteIndex: 6 },
+  { key: "mivo-risk", emoji: "🛡️", label: "Risk first", spriteIndex: 7 },
+  { key: "mivo-candles", emoji: "📈", label: "Green candles", spriteIndex: 8 },
+  { key: "mivo-star", emoji: "⭐", label: "Star performance", spriteIndex: 9 },
+  { key: "mivo-paper-plane", emoji: "🛩️", label: "On the move", spriteIndex: 10 },
+  { key: "mivo-handshake", emoji: "🤝", label: "Good partnership", spriteIndex: 11 },
+  { key: "mivo-target", emoji: "🎯", label: "On target", spriteIndex: 12 },
+  { key: "mivo-sunrise", emoji: "🌅", label: "Fresh start", spriteIndex: 13 },
+  { key: "mivo-lightning", emoji: "⚡", label: "Fast move", spriteIndex: 14 },
+  { key: "mivo-traders", emoji: "🙌", label: "Team celebration", spriteIndex: 15 },
+  { key: "trader-thinking", emoji: "🤔", label: "Thinking trader", spriteIndex: 0, spriteSheet: "mivo-traders-sprite" },
+  { key: "calm-operator", emoji: "😌", label: "Calm operator", spriteIndex: 1, spriteSheet: "mivo-traders-sprite" },
+  { key: "win-cheer", emoji: "🙌", label: "Win celebration", spriteIndex: 2, spriteSheet: "mivo-traders-sprite" },
+  { key: "market-thoughtful", emoji: "🤨", label: "Market thoughts", spriteIndex: 3, spriteSheet: "mivo-traders-sprite" },
+  { key: "risk-focus", emoji: "🤓", label: "Focused on risk", spriteIndex: 4, spriteSheet: "mivo-traders-sprite" },
+  { key: "unwind", emoji: "😎", label: "Take a breath", spriteIndex: 5, spriteSheet: "mivo-traders-sprite" },
+  { key: "team-study", emoji: "📚", label: "Study together", spriteIndex: 6, spriteSheet: "mivo-traders-sprite" },
+  { key: "hello-trader", emoji: "👋", label: "Hello trader", spriteIndex: 7, spriteSheet: "mivo-traders-sprite" },
+  { key: "respect-trader", emoji: "🫡", label: "Respect", spriteIndex: 8, spriteSheet: "mivo-traders-sprite" },
+  { key: "thumbs-up-trader", emoji: "👍", label: "Nice one", spriteIndex: 9, spriteSheet: "mivo-traders-sprite" },
+  { key: "team-high-five", emoji: "🙌", label: "High five", spriteIndex: 10, spriteSheet: "mivo-traders-sprite" },
+  { key: "coffee-break", emoji: "☕", label: "Coffee break", spriteIndex: 11, spriteSheet: "mivo-traders-sprite" },
+  { key: "wait-for-setup", emoji: "⏳", label: "Wait for the setup", spriteIndex: 12, spriteSheet: "mivo-traders-sprite" },
+  { key: "surprised-move", emoji: "😮", label: "Unexpected move", spriteIndex: 13, spriteSheet: "mivo-traders-sprite" },
+  { key: "supportive-team", emoji: "🤝", label: "We have your back", spriteIndex: 14, spriteSheet: "mivo-traders-sprite" },
+  { key: "group-win", emoji: "🎉", label: "Team win", spriteIndex: 15, spriteSheet: "mivo-traders-sprite" },
+  { key: "chart-monitor", emoji: "📊", label: "Market monitor", spriteIndex: 0, spriteSheet: "mivo-tools-sprite" },
+  { key: "trend-magnifier", emoji: "🔎", label: "Find the trend", spriteIndex: 1, spriteSheet: "mivo-tools-sprite" },
+  { key: "trade-checklist", emoji: "📝", label: "Trade checklist", spriteIndex: 2, spriteSheet: "mivo-tools-sprite" },
+  { key: "risk-shield", emoji: "🛡️", label: "Risk protected", spriteIndex: 3, spriteSheet: "mivo-tools-sprite" },
+  { key: "stop-loss", emoji: "🪂", label: "Stop loss in place", spriteIndex: 4, spriteSheet: "mivo-tools-sprite" },
+  { key: "session-timer", emoji: "⏳", label: "Wait for confirmation", spriteIndex: 5, spriteSheet: "mivo-tools-sprite" },
+  { key: "market-bell", emoji: "🔔", label: "Price alert", spriteIndex: 6, spriteSheet: "mivo-tools-sprite" },
+  { key: "trade-calculator", emoji: "🧮", label: "Check the numbers", spriteIndex: 7, spriteSheet: "mivo-tools-sprite" },
+  { key: "laptop-chart", emoji: "💻", label: "Research mode", spriteIndex: 8, spriteSheet: "mivo-tools-sprite" },
+  { key: "phone-alert", emoji: "📲", label: "Alert received", spriteIndex: 9, spriteSheet: "mivo-tools-sprite" },
+  { key: "journal-notes", emoji: "📓", label: "Journal it", spriteIndex: 10, spriteSheet: "mivo-tools-sprite" },
+  { key: "target-compass", emoji: "🧭", label: "Stay on target", spriteIndex: 11, spriteSheet: "mivo-tools-sprite" },
+  { key: "profit-coins", emoji: "🪙", label: "Stack the progress", spriteIndex: 12, spriteSheet: "mivo-tools-sprite" },
+  { key: "bearish-umbrella", emoji: "☂️", label: "Shelter in a downtrend", spriteIndex: 13, spriteSheet: "mivo-tools-sprite" },
+  { key: "market-briefcase", emoji: "💼", label: "Market professionals", spriteIndex: 14, spriteSheet: "mivo-tools-sprite" },
+  { key: "market-globe", emoji: "🌐", label: "Global markets", spriteIndex: 15, spriteSheet: "mivo-tools-sprite" },
+  { key: "bullish-mascot", emoji: "🐂", label: "Bullish energy", spriteIndex: 0, spriteSheet: "mivo-market-sprite" },
+  { key: "calm-bear-mascot", emoji: "🐻", label: "Stay steady", spriteIndex: 1, spriteSheet: "mivo-market-sprite" },
+  { key: "moonshot-rocket", emoji: "🚀", label: "Moonshot", spriteIndex: 2, spriteSheet: "mivo-market-sprite" },
+  { key: "candlestick-confetti", emoji: "🎊", label: "Candles celebrating", spriteIndex: 3, spriteSheet: "mivo-market-sprite" },
+  { key: "candle-dance", emoji: "📈", label: "Candle dance", spriteIndex: 4, spriteSheet: "mivo-market-sprite" },
+  { key: "coin-stack", emoji: "🪙", label: "Coin stack", spriteIndex: 5, spriteSheet: "mivo-market-sprite" },
+  { key: "partner-handshake", emoji: "🤝", label: "Good partnership", spriteIndex: 6, spriteSheet: "mivo-market-sprite" },
+  { key: "downtrend-shelter", emoji: "☂️", label: "Stay sheltered", spriteIndex: 7, spriteSheet: "mivo-market-sprite" },
+  { key: "plan-confirmed", emoji: "✅", label: "Plan confirmed", spriteIndex: 8, spriteSheet: "mivo-market-sprite" },
+  { key: "focus-helmet", emoji: "🪖", label: "Locked in", spriteIndex: 9, spriteSheet: "mivo-market-sprite" },
+  { key: "crystal-market", emoji: "🔮", label: "Looking ahead", spriteIndex: 10, spriteSheet: "mivo-market-sprite" },
+  { key: "trade-idea", emoji: "💡", label: "A new idea", spriteIndex: 11, spriteSheet: "mivo-market-sprite" },
+  { key: "paper-plane-rise", emoji: "🛩️", label: "Ready for takeoff", spriteIndex: 12, spriteSheet: "mivo-market-sprite" },
+  { key: "capital-shield", emoji: "🛡️", label: "Protect your capital", spriteIndex: 13, spriteSheet: "mivo-market-sprite" },
+  { key: "team-fist-bump", emoji: "👊", label: "Nice work", spriteIndex: 14, spriteSheet: "mivo-market-sprite" },
+  { key: "analyst-owl", emoji: "🦉", label: "Market insight", spriteIndex: 15, spriteSheet: "mivo-market-sprite" },
   { key: "bull", emoji: "🐂", label: "Bullish" },
   { key: "bear", emoji: "🐻", label: "Bearish" },
   { key: "rocket", emoji: "🚀", label: "To the moon" },
@@ -38,6 +111,60 @@ export const CHAT_STICKERS = [
   { key: "shrug", emoji: "🤷", label: "It happens" },
   { key: "cool", emoji: "😎", label: "Cool as ever" },
   { key: "party_popper", emoji: "🎉", label: "Big win" },
-] as const;
+] ;
 
-export type ChatStickerDefinition = (typeof CHAT_STICKERS)[number];
+const CLASSIC_STICKER_KEYS = new Set([
+  "bull", "bear", "rocket", "diamond", "trophy", "fire", "eyes", "chart",
+  "money", "goat", "pray", "wave", "laugh", "mindblown", "clap", "party",
+  "love", "strong", "sleep", "thinking", "cry", "salute", "coffee", "warning",
+  "check", "focus", "peace", "heart", "cash", "shrug", "cool", "party_popper",
+]);
+
+export const CHAT_CLASSIC_STICKERS = ALL_CHAT_STICKERS.filter((sticker) => CLASSIC_STICKER_KEYS.has(sticker.key));
+export const CHAT_NEW_STICKERS = ALL_CHAT_STICKERS.filter((sticker) => sticker.spriteSheet === "mivo-traders-sprite" || sticker.spriteSheet === "mivo-tools-sprite" || sticker.spriteSheet === "mivo-market-sprite");
+const CHAT_RETIRED_STICKERS = ALL_CHAT_STICKERS.filter((sticker) => sticker.spriteIndex !== undefined && !sticker.spriteSheet);
+export const CHAT_STICKER_ARCHIVE = [...CHAT_CLASSIC_STICKERS, ...CHAT_RETIRED_STICKERS];
+export const CHAT_STICKERS = [...CHAT_NEW_STICKERS];
+
+export const CHAT_GIFS: ChatGifDefinition[] = [
+  { key: "rocket", label: "We're so back", emoji: "😎", caption: "WE'RE SO BACK", animation: "bounce" },
+  { key: "celebrate", label: "Take profit hit", emoji: "🤑", caption: "TP HIT!", animation: "cheer" },
+  { key: "laugh", label: "No FOMO", emoji: "😂", caption: "I SAID NO FOMO", animation: "shake" },
+  { key: "mindblown", label: "That wick", emoji: "🤯", caption: "THAT WICK?!", animation: "pop" },
+  { key: "focus", label: "Waiting for setup", emoji: "🧐", caption: "WAITING FOR SETUP", animation: "blink" },
+  { key: "gg", label: "Plan followed", emoji: "🤝", caption: "PLAN FOLLOWED", animation: "cheer" },
+  { key: "cry", label: "Stop loss hit", emoji: "😭", caption: "STOP LOSS HIT", animation: "cry" },
+  { key: "fire", label: "Green candle energy", emoji: "🔥", caption: "GREEN CANDLE ENERGY", animation: "pulse" },
+  { key: "clap", label: "Nice entry", emoji: "👏", caption: "NICE ENTRY", animation: "cheer" },
+  { key: "breakout", label: "Breakout watching", emoji: "👀", caption: "BREAKOUT? ...", animation: "blink" },
+  { key: "pullback", label: "Just a pullback", emoji: "😮‍💨", caption: "JUST A PULLBACK", animation: "float" },
+  { key: "coin-spin", label: "Let it cook", emoji: "🪙", caption: "LET IT COOK", animation: "spin" },
+  { key: "bull-run", label: "Bulls in control", emoji: "🐂", caption: "BULLS IN CONTROL", animation: "run" },
+  { key: "bear-cooldown", label: "Bear market nap", emoji: "🐻", caption: "BEAR MARKET NAP", animation: "sleep" },
+  { key: "green-wave", label: "Green day", emoji: "🙌", caption: "GREEN DAY!", animation: "bounce" },
+  { key: "red-alert", label: "News candle", emoji: "😬", caption: "NEWS CANDLE!", animation: "shake" },
+  { key: "profit-rain", label: "Payday", emoji: "💸", caption: "PAYDAY!", animation: "cheer" },
+  { key: "chart-bounce", label: "Up only", emoji: "📈", caption: "UP ONLY?", animation: "bounce" },
+  { key: "coffee-break", label: "Waiting for New York", emoji: "☕", caption: "WAITING FOR NY OPEN", animation: "float" },
+  { key: "stop-loss", label: "Risk managed", emoji: "🛡️", caption: "RISK MANAGED", animation: "pulse" },
+  { key: "patience", label: "Patience pays", emoji: "🕰️", caption: "PATIENCE PAYS", animation: "spin" },
+  { key: "market-open", label: "Market just opened", emoji: "😳", caption: "MARKET JUST OPENED", animation: "pop" },
+  { key: "high-five", label: "W trade", emoji: "🙌", caption: "W TRADE!", animation: "cheer" },
+  { key: "reset", label: "Touch grass", emoji: "🧘", caption: "TOUCH GRASS", animation: "float" },
+  { key: "data-flow", label: "Backtest says", emoji: "🤓", caption: "BACKTEST SAYS...", animation: "wink" },
+  { key: "moonshot", label: "Send it, but don't", emoji: "🚀", caption: "SEND IT? NO.", animation: "run" },
+  { key: "capital-safe", label: "Capital preserved", emoji: "🫡", caption: "CAPITAL PRESERVED", animation: "pulse" },
+  { key: "market-clock", label: "Asia session", emoji: "😴", caption: "ASIA SESSION", animation: "sleep" },
+  { key: "signal-found", label: "Setup confirmed", emoji: "👀", caption: "SETUP CONFIRMED", animation: "blink" },
+  { key: "steady-growth", label: "Compounding", emoji: "🤑", caption: "COMPOUNDING", animation: "bounce" },
+  { key: "overtrade", label: "One more trade", emoji: "😵", caption: "ONE MORE TRADE...", animation: "spin" },
+  { key: "fomo", label: "I missed it", emoji: "🏃💨", caption: "I MISSED IT!", animation: "run" },
+  { key: "revenge-trade", label: "Why did I re-enter", emoji: "🤦", caption: "WHY DID I RE-ENTER?", animation: "facepalm" },
+  { key: "no-setup", label: "No setup, no trade", emoji: "☕", caption: "NO SETUP. NO TRADE.", animation: "float" },
+  { key: "tp-before-sl", label: "Take profit first", emoji: "🥹", caption: "TP BEFORE SL!", animation: "pop" },
+  { key: "one-more-candle", label: "One more candle", emoji: "👁️", caption: "ONE MORE CANDLE", animation: "blink" },
+  { key: "cpi-in-five", label: "CPI in five minutes", emoji: "😱", caption: "CPI IN 5 MIN!", animation: "shake" },
+  { key: "price-alert", label: "Check your plan", emoji: "📲", caption: "CHECK YOUR PLAN!", animation: "pulse" },
+  { key: "friday-close", label: "Friday close", emoji: "🎉", caption: "FRIDAY CLOSE!", animation: "cheer" },
+  { key: "close-the-app", label: "Close the app", emoji: "🫠", caption: "CLOSE THE APP", animation: "melt" },
+];

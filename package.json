@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "prisma generate",
     "dev": "next dev",
     "db:sync:ecosystem": "prisma db execute --schema prisma/schema.prisma --file prisma/ecosystem-schema-sync.sql",
     "build": "prisma generate && next build",

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { ThemeToggle } from "./theme-provider";
+import { BrandLogo } from "./brand-logo";
 
 type NavIconName = "overview" | "backtest" | "journal" | "sync" | "community" | "chat" | "signals" | "announcements" | "profile" | "settings" | "support";
 type NavItem = { label: string; href: string; icon: NavIconName };
@@ -70,7 +71,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     <button type="button" aria-label="Close navigation" onClick={() => setMenuOpen(false)} className={`workspace-scrim ${menuOpen ? "is-open" : ""}`} />
     <aside className={`workspace-sidebar ${menuOpen ? "is-open" : ""}`}>
       <Link href="/dashboard" className="workspace-brand" onClick={() => setMenuOpen(false)}>
-        <span className="workspace-brand-mark">M</span><span><span className="workspace-brand-title block">MIVO CAPITAL</span><span className="workspace-brand-subtitle block">TRADING ECOSYSTEM</span></span>
+        <BrandLogo className="h-[68px] w-[110px]" priority />
       </Link>
       <nav className="workspace-nav" aria-label="Workspace navigation">
         {sections.map((section) => <div key={section.label}><p className="workspace-nav-label">{section.label}</p>{section.items.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} aria-current={isActive(item.href) ? "page" : undefined} className={`workspace-nav-link ${isActive(item.href) ? "is-active" : ""}`}><span className="workspace-nav-icon"><WorkspaceIcon name={item.icon} /></span><span>{item.label}</span></Link>)}</div>)}

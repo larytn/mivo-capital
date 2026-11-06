@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BrandLogo } from "@/app/components/brand-logo";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -54,9 +55,9 @@ export default function AdminLoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-black px-5 text-white">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
         <div className="text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-green-500">
-            Mivo Capital
-          </p>
+          <Link href="/" aria-label="Mivo Capital home" className="inline-flex justify-center">
+            <BrandLogo className="h-24 w-40" priority tone="dark" />
+          </Link>
 
           <h1 className="mt-3 text-3xl font-black">
             Admin Login

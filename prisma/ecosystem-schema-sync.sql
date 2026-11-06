@@ -4,7 +4,8 @@
 
 ALTER TABLE "User"
   ADD COLUMN IF NOT EXISTS "nickname" TEXT,
-  ADD COLUMN IF NOT EXISTS "avatarUrl" TEXT;
+  ADD COLUMN IF NOT EXISTS "avatarUrl" TEXT,
+  ADD COLUMN IF NOT EXISTS "nicknameChangedAt" TIMESTAMP(3);
 
 UPDATE "User"
 SET "nickname" = 'Trader-' || SUBSTRING(MD5("id") FROM 1 FOR 8)
@@ -112,7 +113,8 @@ CREATE TABLE IF NOT EXISTS "ChatMessage" (
 ALTER TABLE "ChatMessage"
   ADD COLUMN IF NOT EXISTS "kind" TEXT NOT NULL DEFAULT 'TEXT',
   ADD COLUMN IF NOT EXISTS "mediaKey" TEXT,
-  ADD COLUMN IF NOT EXISTS "mediaUrl" TEXT;
+  ADD COLUMN IF NOT EXISTS "mediaUrl" TEXT,
+  ADD COLUMN IF NOT EXISTS "replyToId" TEXT;
 
 CREATE TABLE IF NOT EXISTS "ChatReaction" (
   "id" TEXT NOT NULL,
@@ -206,6 +208,7 @@ CREATE INDEX IF NOT EXISTS "CommunityComment_postId_createdAt_idx" ON "Community
 CREATE INDEX IF NOT EXISTS "CommunityComment_authorId_idx" ON "CommunityComment"("authorId");
 CREATE INDEX IF NOT EXISTS "CommunityComment_parentId_idx" ON "CommunityComment"("parentId");
 CREATE INDEX IF NOT EXISTS "ChatMessage_createdAt_idx" ON "ChatMessage"("createdAt");
+CREATE INDEX IF NOT EXISTS "ChatMessage_replyToId_idx" ON "ChatMessage"("replyToId");
 CREATE UNIQUE INDEX IF NOT EXISTS "ChatReaction_messageId_userId_emoji_key" ON "ChatReaction"("messageId", "userId", "emoji");
 CREATE INDEX IF NOT EXISTS "ChatReaction_messageId_createdAt_idx" ON "ChatReaction"("messageId", "createdAt");
 CREATE INDEX IF NOT EXISTS "ChatReaction_userId_idx" ON "ChatReaction"("userId");
@@ -249,6 +252,9 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ChatMessage_authorId_fkey' AND conrelid = '"ChatMessage"'::regclass) THEN
     ALTER TABLE "ChatMessage" ADD CONSTRAINT "ChatMessage_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ChatMessage_replyToId_fkey' AND conrelid = '"ChatMessage"'::regclass) THEN
+    ALTER TABLE "ChatMessage" ADD CONSTRAINT "ChatMessage_replyToId_fkey" FOREIGN KEY ("replyToId") REFERENCES "ChatMessage"("id") ON DELETE SET NULL ON UPDATE CASCADE;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ChatReaction_messageId_fkey' AND conrelid = '"ChatReaction"'::regclass) THEN
     ALTER TABLE "ChatReaction" ADD CONSTRAINT "ChatReaction_messageId_fkey" FOREIGN KEY ("messageId") REFERENCES "ChatMessage"("id") ON DELETE CASCADE ON UPDATE CASCADE;

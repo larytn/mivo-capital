@@ -1570,20 +1570,20 @@ export default function BacktestingLabPage() {
     const chart = createChart(container, {
       autoSize: true,
       layout: {
-        background: { color: "#0c1220" },
-        textColor: "#a7b4ca",
-        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+        background: { color: "#080a0d" },
+        textColor: "#c6cbd1",
+        fontFamily: "Montserrat, ui-sans-serif, system-ui, sans-serif",
       },
       grid: {
-        vertLines: { color: "#202b40" },
-        horzLines: { color: "#202b40" },
+        vertLines: { color: "#1b1e24" },
+        horzLines: { color: "#1b1e24" },
       },
       rightPriceScale: {
-        borderColor: "#35415a",
+        borderColor: "#1b1e24",
         scaleMargins: { top: 0.12, bottom: 0.12 },
       },
       timeScale: {
-        borderColor: "#35415a",
+        borderColor: "#1b1e24",
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 8,
@@ -1600,8 +1600,8 @@ export default function BacktestingLabPage() {
         vertTouchDrag: true,
       },
       crosshair: {
-        vertLine: { color: "#7687a3", labelBackgroundColor: "#243149" },
-        horzLine: { color: "#7687a3", labelBackgroundColor: "#243149" },
+        vertLine: { color: "#c6cbd1", labelBackgroundColor: "#1b1e24" },
+        horzLine: { color: "#c6cbd1", labelBackgroundColor: "#1b1e24" },
       },
     });
 
@@ -1768,15 +1768,15 @@ export default function BacktestingLabPage() {
 
     chart.applyOptions({
       layout: {
-        background: { color: pageTheme === "dark" ? "#0c1220" : "#f5f8fe" },
-        textColor: pageTheme === "dark" ? "#a7b4ca" : "#53627a",
+        background: { color: pageTheme === "dark" ? "#080a0d" : "#f2f0e9" },
+        textColor: pageTheme === "dark" ? "#c6cbd1" : "#1b1e24",
       },
       grid: {
-        vertLines: { color: pageTheme === "dark" ? "#202b40" : "#e2e9f3" },
-        horzLines: { color: pageTheme === "dark" ? "#202b40" : "#e2e9f3" },
+        vertLines: { color: pageTheme === "dark" ? "#1b1e24" : "#c6cbd1" },
+        horzLines: { color: pageTheme === "dark" ? "#1b1e24" : "#c6cbd1" },
       },
-      rightPriceScale: { borderColor: pageTheme === "dark" ? "#35415a" : "#cbd5e4" },
-      timeScale: { borderColor: pageTheme === "dark" ? "#35415a" : "#cbd5e4" },
+      rightPriceScale: { borderColor: "#c6cbd1" },
+      timeScale: { borderColor: "#c6cbd1" },
     });
   }, [pageTheme]);
 
@@ -1998,7 +1998,7 @@ export default function BacktestingLabPage() {
             node.setAttribute("fill", color);
             node.setAttribute("font-size", "10");
             node.setAttribute("font-weight", "700");
-            node.setAttribute("font-family", "Inter, ui-sans-serif, system-ui, sans-serif");
+            node.setAttribute("font-family", "Montserrat, ui-sans-serif, system-ui, sans-serif");
             node.setAttribute("pointer-events", "none");
             node.textContent = text;
             svg.appendChild(node);
@@ -2171,7 +2171,7 @@ export default function BacktestingLabPage() {
             label.setAttribute("y", String(levelY - 3));
             label.setAttribute("fill", drawing.color);
             label.setAttribute("font-size", "9");
-            label.setAttribute("font-family", "Inter, ui-sans-serif, system-ui, sans-serif");
+            label.setAttribute("font-family", "Montserrat, ui-sans-serif, system-ui, sans-serif");
             label.setAttribute("pointer-events", "none");
             const ratioLabel = `${(ratio * 100).toFixed(ratio % 1 ? 1 : 0)}%`;
             label.textContent = drawing.showPrices
@@ -2351,7 +2351,7 @@ export default function BacktestingLabPage() {
               label.setAttribute("y", String(Math.max(12, top + 14)));
               label.setAttribute("fill", drawing.color);
               label.setAttribute("font-size", "10");
-              label.setAttribute("font-family", "Inter, ui-sans-serif, system-ui, sans-serif");
+              label.setAttribute("font-family", "Montserrat, ui-sans-serif, system-ui, sans-serif");
               label.setAttribute("pointer-events", "none");
               label.textContent = `${formatPrice(delta, symbol, pricePrecision)} · ${percent.toFixed(2)}%`;
               svg.appendChild(label);
@@ -2466,7 +2466,7 @@ export default function BacktestingLabPage() {
           info.setAttribute("y", String((y1 + y2) / 2 - 6));
           info.setAttribute("fill", drawing.color);
           info.setAttribute("font-size", "10");
-          info.setAttribute("font-family", "Inter, ui-sans-serif, system-ui, sans-serif");
+          info.setAttribute("font-family", "Montserrat, ui-sans-serif, system-ui, sans-serif");
           info.setAttribute("pointer-events", "none");
           info.textContent = `${formatPrice(delta, symbol, pricePrecision)} · ${percent.toFixed(2)}% · ${duration}`;
           svg.appendChild(info);
@@ -2547,7 +2547,7 @@ export default function BacktestingLabPage() {
         text.setAttribute("fill", labelColor);
         text.setAttribute("font-size", "9.5");
         text.setAttribute("font-weight", "700");
-        text.setAttribute("font-family", "Inter, ui-sans-serif, system-ui, sans-serif");
+        text.setAttribute("font-family", "Montserrat, ui-sans-serif, system-ui, sans-serif");
         text.setAttribute("text-anchor", "end");
         text.setAttribute("pointer-events", "none");
         text.textContent = tagText;

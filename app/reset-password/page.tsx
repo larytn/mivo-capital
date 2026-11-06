@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/app/components/brand-logo";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -65,6 +66,11 @@ function ResetPasswordContent() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-5 text-white">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 sm:p-10">
+        <div className="mb-6 text-center">
+          <Link href="/" aria-label="Mivo Capital home" className="inline-flex justify-center">
+            <BrandLogo className="h-24 w-40" priority tone="dark" />
+          </Link>
+        </div>
         <h1 className="text-center text-3xl font-black text-green-500 sm:text-4xl">
           Reset Password
         </h1>

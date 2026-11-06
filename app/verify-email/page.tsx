@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { BrandLogo } from "@/app/components/brand-logo";
 
 type VerificationState =
   | "VERIFYING"
@@ -11,24 +12,17 @@ type VerificationState =
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
+  const token = searchParams.get("token");
 
   const [status, setStatus] =
-    useState<VerificationState>("VERIFYING");
+    useState<VerificationState>(token ? "VERIFYING" : "ERROR");
 
   const [message, setMessage] = useState(
-    "Verifying your email..."
+    token ? "Verifying your email..." : "This verification link is invalid."
   );
 
   useEffect(() => {
-    const token = searchParams.get("token");
-
-    if (!token) {
-      setStatus("ERROR");
-      setMessage(
-        "This verification link is invalid."
-      );
-      return;
-    }
+    if (!token) return;
 
     async function verifyEmail() {
       try {
@@ -80,7 +74,7 @@ function VerifyEmailContent() {
     }
 
     verifyEmail();
-  }, [searchParams]);
+  }, [token]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-10 text-white">
@@ -89,9 +83,10 @@ function VerifyEmailContent() {
         <div className="mb-8 text-center">
           <Link
             href="/"
-            className="text-3xl font-black text-green-500"
+            aria-label="Mivo Capital home"
+            className="inline-flex justify-center"
           >
-            Mivo Capital
+            <BrandLogo className="h-28 w-44" priority tone="dark" />
           </Link>
 
           <p className="mt-2 text-sm text-gray-500">

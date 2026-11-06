@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BrandLogo } from "@/app/components/brand-logo";
 import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
@@ -241,9 +242,10 @@ export default function LoginPage() {
         <div className="mb-7 text-center sm:mb-8">
           <Link
             href="/"
-            className="inline-block text-2xl font-black tracking-tight text-green-500 sm:text-3xl"
+            aria-label="Mivo Capital home"
+            className="inline-flex justify-center"
           >
-            Mivo Capital
+            <BrandLogo className="h-28 w-44" priority tone="dark" />
           </Link>
 
           <p className="mt-2 text-xs text-gray-500 sm:text-sm">

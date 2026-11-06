@@ -1,4 +1,5 @@
 
+/* eslint-disable @next/next/no-page-custom-font */
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "./components/theme-provider";
@@ -12,6 +13,14 @@ export const metadata: Metadata = {
   description:
     "Backtest trading ideas, keep a clear trade journal, connect MT5, and share market discussions with the Mivo trader community.",
   applicationName: "Mivo Capital",
+  icons: {
+    icon: "/brand/mivo-capital-logo-transparent.png",
+    shortcut: "/brand/mivo-capital-logo-transparent.png",
+    apple: "/brand/mivo-capital-logo-transparent.png",
+  },
+  openGraph: {
+    images: [{ url: "/brand/mivo-capital-logo-transparent.png", width: 2104, height: 747, alt: "Mivo Capital" }],
+  },
   robots: {
     index: false,
     follow: false,
@@ -29,6 +38,11 @@ export default function RootLayout({
     data-theme="dark"
     className="h-full antialiased"
   >
+    <head>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    </head>
     <body className="min-h-full flex flex-col">
       <ThemeProvider><WorkspaceShell>{children}</WorkspaceShell></ThemeProvider>
     </body>

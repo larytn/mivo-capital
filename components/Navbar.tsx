@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { BrandLogo } from "@/app/components/brand-logo";
 
 const links = [
   ["Community", "/community"],
@@ -37,7 +38,9 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 text-foreground backdrop-blur">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
-        <Link href="/" className="shrink-0 text-lg font-black tracking-wide">MIVO<span className="text-muted">. CAPITAL</span></Link>
+        <Link href="/" aria-label="Mivo Capital home" className="flex h-16 w-[118px] shrink-0 items-center">
+          <BrandLogo className="h-[60px] w-[112px]" priority />
+        </Link>
         <nav className="hidden items-center gap-5 lg:flex">
           <Link href="/" className="text-sm text-muted hover:text-foreground">Home</Link>
           {links.map(([label, href]) => <Link key={href} href={href} className={`text-sm hover:text-foreground ${pathname === href ? "font-semibold text-foreground" : "text-muted"}`}>{label}</Link>)}
