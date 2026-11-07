@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 type Candle = {
   time: number;
@@ -162,13 +163,26 @@ function errorResponse(message: string, status = 400) {
 }
 
 function validCandle(candle: Candle) {
+  const bodyHigh = Math.max(candle.open, candle.close);
+  const bodyLow = Math.min(candle.open, candle.close);
+  const tolerance = Math.max(
+    1,
+    Math.abs(candle.open),
+    Math.abs(candle.high),
+    Math.abs(candle.low),
+    Math.abs(candle.close),
+  ) * 1e-10;
+
   return (
-    Number.isFinite(candle.time) &&
+    Number.isInteger(candle.time) &&
     Number.isFinite(candle.open) &&
     Number.isFinite(candle.high) &&
     Number.isFinite(candle.low) &&
     Number.isFinite(candle.close) &&
-    candle.time > 0
+    candle.time > 0 &&
+    candle.high + tolerance >= bodyHigh &&
+    candle.low - tolerance <= bodyLow &&
+    candle.high + tolerance >= candle.low
   );
 }
 
@@ -176,9 +190,15 @@ function normalizeCandles(candles: Candle[]): Candle[] {
   const unique = new Map<number, Candle>();
 
   for (const candle of candles) {
-    if (validCandle(candle)) {
-      unique.set(candle.time, candle);
-    }
+    const seconds = candle.time > 100_000_000_000 ? candle.time / 1000 : candle.time;
+    const normalized = { ...candle, time: Math.floor(seconds) };
+    if (!validCandle(normalized)) continue;
+
+    // Preserve provider OHLC values. Expand only a rounding-sized wick so the
+    // body is contained by its high/low, as required by candle charts.
+    normalized.high = Math.max(normalized.high, normalized.open, normalized.close);
+    normalized.low = Math.min(normalized.low, normalized.open, normalized.close);
+    unique.set(normalized.time, normalized);
   }
 
   return [...unique.values()].sort((a, b) => a.time - b.time);
@@ -562,136 +582,100 @@ async function getDerivCandles(
     );
   }
 
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket(
-      "wss://api.derivws.com/trading/v1/options/ws/public",
-    );
+  const maxCandlesPerRequest = 5000;
+  const pageSpan = granularity * maxCandlesPerRequest;
+  const firstPageStart = Math.floor(start / granularity) * granularity;
+  const windows: Array<{ start: number; end: number; count: number }> = [];
+  for (let pageStart = firstPageStart; pageStart <= end; pageStart += pageSpan) {
+    const pageEnd = Math.min(end, pageStart + pageSpan - granularity);
+    windows.push({
+      start: pageStart,
+      end: pageEnd,
+      count: Math.min(maxCandlesPerRequest, Math.max(1, Math.floor((pageEnd - pageStart) / granularity) + 1)),
+    });
+  }
 
-    let settled = false;
+  const loadWindow = (window: { start: number; end: number; count: number }) =>
+    new Promise<Candle[]>((resolve, reject) => {
+      const socket = new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
+      let settled = false;
+      const timeout = setTimeout(() => finish(() => reject(new Error("Deriv timed out while loading historical candles."))), 8000);
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        try {
+          socket.close();
+        } catch {
+          // Socket may already be closed.
+        }
+        callback();
+      };
 
-    const finish = (callback: () => void) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-
-      try {
-        socket.close();
-      } catch {
-        // Socket may already be closed.
-      }
-
-      callback();
-    };
-
-    const timeout = setTimeout(() => {
-      finish(() =>
-        reject(
-          new Error(
-            "Deriv timed out while loading historical candles.",
-          ),
-        ),
-      );
-    }, 8000);
-
-    const count = Math.min(
-      5000,
-      Math.max(1, Math.ceil((end - start) / granularity) + 2),
-    );
-
-    socket.addEventListener("open", () => {
-      try {
-        socket.send(
-          JSON.stringify({
+      socket.addEventListener("open", () => {
+        try {
+          socket.send(JSON.stringify({
             ticks_history: DERIV_SYMBOL_ALIASES[symbol.toUpperCase()] ?? symbol,
-            start,
-            end: String(end),
-            count,
+            start: window.start,
+            end: String(window.end),
+            count: window.count,
             style: "candles",
             granularity,
             adjust_start_time: 1,
-          }),
-        );
-      } catch {
-        finish(() => reject(new Error("Could not request candles from Deriv.")));
-      }
-    });
+          }));
+        } catch {
+          finish(() => reject(new Error("Could not request candles from Deriv.")));
+        }
+      });
 
-    socket.addEventListener("message", (event) => {
-      let data: {
-        error?: { message?: string };
-        candles?: Array<{
-          epoch: number;
-          open: number | string;
-          high: number | string;
-          low: number | string;
-          close: number | string;
-        }>;
-      };
-
-      try {
-        data = JSON.parse(String(event.data));
-      } catch {
-        finish(() =>
-          reject(new Error("Invalid response from Deriv.")),
-        );
-        return;
-      }
-
-      if (data.error) {
-        finish(() =>
-          reject(
-            new Error(
-              data.error?.message ||
-                "Deriv rejected the request.",
-            ),
-          ),
-        );
-        return;
-      }
-
-      if (data.candles) {
-        const candles = data.candles.map((candle) => ({
+      socket.addEventListener("message", (event) => {
+        let data: {
+          error?: { message?: string };
+          candles?: Array<{
+            epoch: number | string;
+            open: number | string;
+            high: number | string;
+            low: number | string;
+            close: number | string;
+          }>;
+        };
+        try {
+          data = JSON.parse(String(event.data));
+        } catch {
+          finish(() => reject(new Error("Invalid response from Deriv.")));
+          return;
+        }
+        if (data.error) {
+          finish(() => reject(new Error(data.error?.message || "Deriv rejected the request.")));
+          return;
+        }
+        if (!Array.isArray(data.candles)) return;
+        const candles = normalizeCandles(data.candles.map((candle) => ({
           time: Number(candle.epoch),
           open: Number(candle.open),
           high: Number(candle.high),
           low: Number(candle.low),
           close: Number(candle.close),
-        }));
+        })).filter((candle) => candle.time >= window.start && candle.time <= window.end));
+        finish(() => resolve(candles));
+      });
 
-        finish(() =>
-          resolve(
-            normalizeCandles(
-              candles.filter(
-                (candle) =>
-                  candle.time >= start &&
-                  candle.time <= end,
-              ),
-            ),
-          ),
-        );
-      }
+      socket.addEventListener("error", () => finish(() => reject(new Error("Could not connect to Deriv market data."))));
+      socket.addEventListener("close", () => {
+        if (!settled) finish(() => reject(new Error("Deriv closed the connection before returning candles.")));
+      });
     });
 
-    socket.addEventListener("error", () => {
-      finish(() =>
-        reject(
-          new Error("Could not connect to Deriv market data."),
-        ),
-      );
-    });
+  const candles: Candle[] = [];
+  const pageConcurrency = 4;
+  for (let index = 0; index < windows.length; index += pageConcurrency) {
+    const pages = await Promise.all(windows.slice(index, index + pageConcurrency).map(loadWindow));
+    candles.push(...pages.flat());
+  }
 
-    socket.addEventListener("close", () => {
-      if (!settled) {
-        finish(() =>
-          reject(
-            new Error(
-              "Deriv closed the connection before returning candles.",
-            ),
-          ),
-        );
-      }
-    });
-  });
+  const result = normalizeCandles(candles.filter((candle) => candle.time >= start && candle.time <= end));
+  if (!result.length) throw new Error(`Deriv returned no candles for ${symbol} in this date range.`);
+  return result;
 }
 
 export async function GET(request: NextRequest) {

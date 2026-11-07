@@ -105,6 +105,15 @@ button { cursor: pointer; }
 .chart-settings-panel[open] .chart-settings-summary { border-bottom: 1px solid var(--border); }
 .chart-settings-panel[open] .chart-settings-summary::after { content: "−"; }
 .chart-settings-summary-meta { margin-left: auto; color: var(--muted); font-size: 10px; font-weight: 500; }
+.chart-candle-colors { position: relative; z-index: 35; flex: 0 0 auto; }
+.chart-candle-colors > summary { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); padding: 0 9px; color: var(--foreground); font-size: 11px; font-weight: 700; list-style: none; cursor: pointer; }
+.chart-candle-colors > summary::-webkit-details-marker { display: none; }
+.chart-candle-color-swatches { display: inline-flex; gap: 3px; }
+.chart-candle-color-swatches i { width: 8px; height: 14px; border-radius: 2px; }
+.chart-candle-colors-panel { position: absolute; top: calc(100% + 7px); right: 0; display: grid; width: 238px; gap: 10px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); padding: 12px; box-shadow: 0 12px 30px rgb(0 0 0 / 28%); }
+.chart-candle-colors-panel label { display: grid; grid-template-columns: minmax(0, 1fr) 34px auto; align-items: center; gap: 8px; color: var(--foreground); font-size: 11px; font-weight: 600; }
+.chart-candle-colors-panel input[type="color"] { width: 34px; height: 28px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); padding: 3px; }
+.chart-candle-colors-panel code { color: var(--muted); font-family: var(--font-geist-mono); font-size: 10px; }
 .chart-symbol-toolbar > div:first-child { min-width: 0; flex: 1 1 auto; }
 .chart-timeframe-list { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .chart-timeframe-list::-webkit-scrollbar { display: none; }
@@ -211,7 +220,7 @@ button { cursor: pointer; }
   .chart-symbol-toolbar > div:first-child::-webkit-scrollbar { display: none; }
   .chart-symbol-toolbar select { flex: 0 0 auto; padding: 6px 8px; font-size: 11px; }
   .chart-symbol-toolbar select[aria-label="Instrument"] { width: 124px; }
-  .chart-symbol-toolbar > div:nth-child(2) { display: none; }
+  .chart-symbol-toolbar > .chart-market-values { display: none; }
   .chart-market-status { min-height: 28px; flex-wrap: nowrap; padding: 5px 9px; }
   .chart-market-status > div > span.font-semibold,
   .chart-market-status > div > span.ml-2 { display: none; }
@@ -231,7 +240,7 @@ button { cursor: pointer; }
   .chart-floating-menu[open] > .chart-floating-menu-body { position: absolute; bottom: calc(100% + 8px); max-height: min(58svh, 25rem); overflow-y: auto; }
   .chart-floating-menu-replay[open] > .chart-floating-menu-body { right: auto; left: 0; width: min(90vw, 25rem); }
   .chart-floating-menu-trade[open] > .chart-floating-menu-body { right: 0; left: auto; width: min(90vw, 25rem); }
-  .backtesting-page .chart-container { height: clamp(360px, 52svh, 520px); }
+  .backtesting-page .chart-container { height: clamp(500px, 64svh, 760px); }
   .backtesting-page .chart-overlay-menu-body { max-width: calc(100vw - 24px); }
 }
 

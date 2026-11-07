@@ -23,7 +23,6 @@ export async function middleware(request: NextRequest) {
   }
 
   const postponedPagePaths = [
-    "/academy",
     "/copy-trading",
     "/fund-management",
     "/real-estate",

@@ -60,6 +60,56 @@ type Candle = {
   close: number;
 };
 
+type CandleColors = { bullish: string; bearish: string };
+
+const DEFAULT_CANDLE_COLORS: CandleColors = {
+  bullish: "#26a69a",
+  bearish: "#ef5350",
+};
+const CANDLE_COLORS_STORAGE_KEY = "mivo.backtesting.candle-colors.v1";
+
+function isHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[\da-f]{6}$/i.test(value);
+}
+
+function normalizeCandleData(input: unknown): Candle[] {
+  if (!Array.isArray(input)) return [];
+  const unique = new Map<number, Candle>();
+
+  for (const item of input) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const rawTime = Number(row.time);
+    const time = Math.floor(rawTime > 100_000_000_000 ? rawTime / 1000 : rawTime);
+    const open = Number(row.open);
+    const high = Number(row.high);
+    const low = Number(row.low);
+    const close = Number(row.close);
+    if (
+      !Number.isInteger(time) || time <= 0 ||
+      !Number.isFinite(open) || !Number.isFinite(high) ||
+      !Number.isFinite(low) || !Number.isFinite(close)
+    ) continue;
+
+    const tolerance = Math.max(1, Math.abs(open), Math.abs(high), Math.abs(low), Math.abs(close)) * 1e-10;
+    const bodyHigh = Math.max(open, close);
+    const bodyLow = Math.min(open, close);
+    if (high + tolerance < bodyHigh || low - tolerance > bodyLow || high + tolerance < low) continue;
+
+    // Keep provider OHLC values and expand only a rounding-sized wick. No
+    // missing bars or prices are synthesized.
+    unique.set(time, {
+      time,
+      open,
+      high: Math.max(high, bodyHigh),
+      low: Math.min(low, bodyLow),
+      close,
+    });
+  }
+
+  return [...unique.values()].sort((a, b) => a.time - b.time);
+}
+
 function candleTimeAtLogical(candles: Candle[], logical: number, intervalSeconds: number) {
   if (!candles.length) return null;
   if (logical <= 0) return candles[0].time + logical * intervalSeconds;
@@ -578,100 +628,101 @@ async function loadDerivCandlesInBrowser(
   const granularity = DERIV_GRANULARITY_SECONDS[interval];
   if (!granularity) throw new Error(`Deriv does not support ${interval} candles.`);
   if (signal.aborted) throw new Error("Market data request cancelled.");
-
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
-    let settled = false;
-    const finish = (callback: () => void) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeout);
-      signal.removeEventListener("abort", handleAbort);
-      try {
-        socket.close();
-      } catch {
-        // The socket may already be closed.
-      }
-      callback();
-    };
-    const handleAbort = () =>
-      finish(() => reject(new Error("Market data request cancelled.")));
-    const timeout = window.setTimeout(
-      () => finish(() => reject(new Error("Deriv candle request timed out."))),
-      8000,
-    );
-
-    signal.addEventListener("abort", handleAbort, { once: true });
-    socket.addEventListener("open", () => {
-      const count = Math.min(
-        5000,
-        Math.max(1, Math.ceil((end - start) / granularity) + 2),
-      );
-      socket.send(JSON.stringify({
-        ticks_history: DERIV_BROWSER_SYMBOL_ALIASES[symbol.toUpperCase()] ?? symbol,
-        start,
-        end: String(end),
-        count,
-        style: "candles",
-        granularity,
-        adjust_start_time: 1,
-      }));
+  const maxCandlesPerRequest = 5000;
+  const pageSpan = granularity * maxCandlesPerRequest;
+  const firstPageStart = Math.floor(start / granularity) * granularity;
+  const windows: Array<{ start: number; end: number; count: number }> = [];
+  for (let pageStart = firstPageStart; pageStart <= end; pageStart += pageSpan) {
+    const pageEnd = Math.min(end, pageStart + pageSpan - granularity);
+    windows.push({
+      start: pageStart,
+      end: pageEnd,
+      count: Math.min(maxCandlesPerRequest, Math.max(1, Math.floor((pageEnd - pageStart) / granularity) + 1)),
     });
-    socket.addEventListener("message", (event) => {
-      let data: {
-        error?: { message?: string };
-        candles?: Array<{
-          epoch: number | string;
-          open: number | string;
-          high: number | string;
-          low: number | string;
-          close: number | string;
-        }>;
+  }
+
+  const loadWindow = (range: { start: number; end: number; count: number }) =>
+    new Promise<Candle[]>((resolve, reject) => {
+      const socket = new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
+      let settled = false;
+      const timeout = window.setTimeout(() => finish(() => reject(new Error("Deriv candle request timed out."))), 8000);
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        signal.removeEventListener("abort", handleAbort);
+        try {
+          socket.close();
+        } catch {
+          // The socket may already be closed.
+        }
+        callback();
       };
-      try {
-        data = JSON.parse(String(event.data));
-      } catch {
-        finish(() => reject(new Error("Deriv returned an invalid candle response.")));
-        return;
-      }
-      if (data.error) {
-        finish(() => reject(new Error(data.error?.message || "Deriv rejected the candle request.")));
-        return;
-      }
-      if (!data.candles) return;
-      const candles = data.candles
-        .map((candle) => ({
+      const handleAbort = () => finish(() => reject(new Error("Market data request cancelled.")));
+      signal.addEventListener("abort", handleAbort, { once: true });
+
+      socket.addEventListener("open", () => {
+        try {
+          socket.send(JSON.stringify({
+            ticks_history: DERIV_BROWSER_SYMBOL_ALIASES[symbol.toUpperCase()] ?? symbol,
+            start: range.start,
+            end: String(range.end),
+            count: range.count,
+            style: "candles",
+            granularity,
+            adjust_start_time: 1,
+          }));
+        } catch {
+          finish(() => reject(new Error("Could not request candles from Deriv.")));
+        }
+      });
+      socket.addEventListener("message", (event) => {
+        let data: {
+          error?: { message?: string };
+          candles?: Array<{
+            epoch: number | string;
+            open: number | string;
+            high: number | string;
+            low: number | string;
+            close: number | string;
+          }>;
+        };
+        try {
+          data = JSON.parse(String(event.data));
+        } catch {
+          finish(() => reject(new Error("Deriv returned an invalid candle response.")));
+          return;
+        }
+        if (data.error) {
+          finish(() => reject(new Error(data.error?.message || "Deriv rejected the candle request.")));
+          return;
+        }
+        if (!Array.isArray(data.candles)) return;
+        const candles = normalizeCandleData(data.candles.map((candle) => ({
           time: Number(candle.epoch),
           open: Number(candle.open),
           high: Number(candle.high),
           low: Number(candle.low),
           close: Number(candle.close),
-        }))
-        .filter((candle) =>
-          Number.isFinite(candle.time) &&
-          Number.isFinite(candle.open) &&
-          Number.isFinite(candle.high) &&
-          Number.isFinite(candle.low) &&
-          Number.isFinite(candle.close) &&
-          candle.time >= start &&
-          candle.time <= end,
-        )
-        .sort((a, b) => a.time - b.time);
-      if (!candles.length) {
-        finish(() => reject(new Error(`Deriv returned no candles for ${symbol} in this date range.`)));
-        return;
-      }
-      finish(() => resolve(candles));
+        })).filter((candle) => candle.time >= range.start && candle.time <= range.end));
+        finish(() => resolve(candles));
+      });
+      socket.addEventListener("error", () => finish(() => reject(new Error("Could not connect to Deriv market data."))));
+      socket.addEventListener("close", () => {
+        if (!settled) finish(() => reject(new Error("Deriv closed the connection before returning candles.")));
+      });
     });
-    socket.addEventListener("error", () =>
-      finish(() => reject(new Error("Could not connect to Deriv market data."))),
-    );
-    socket.addEventListener("close", () => {
-      if (!settled) {
-        finish(() => reject(new Error("Deriv closed the connection before returning candles.")));
-      }
-    });
-  });
+
+  const candles: Candle[] = [];
+  const pageConcurrency = 4;
+  for (let index = 0; index < windows.length; index += pageConcurrency) {
+    const pages = await Promise.all(windows.slice(index, index + pageConcurrency).map(loadWindow));
+    candles.push(...pages.flat());
+  }
+
+  const result = normalizeCandleData(candles.filter((candle) => candle.time >= start && candle.time <= end));
+  if (!result.length) throw new Error(`Deriv returned no candles for ${symbol} in this date range.`);
+  return result;
 }
 
 async function loadBinanceCandlesInBrowser(
@@ -730,9 +781,9 @@ async function loadBinanceCandlesInBrowser(
       candles.push(...chunks.flat());
     }
 
-    const result = candles
-      .filter((candle) => candle.time >= start && candle.time <= end)
-      .sort((a, b) => a.time - b.time);
+    const result = normalizeCandleData(
+      candles.filter((candle) => candle.time >= start && candle.time <= end),
+    );
     if (!result.length) throw new Error(`${new URL(endpoint).hostname} returned no candles.`);
     return result;
   });
@@ -896,7 +947,7 @@ const TIMEFRAMES = [
 
 const STARTING_BALANCE = 10_000;
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-const CANDLE_CACHE_INDEX = "mivo.backtesting.candles.v1.index";
+const CANDLE_CACHE_INDEX = "mivo.backtesting.candles.v2.index";
 const CANDLE_CACHE_LIMIT = 5;
 
 type CachedCandles = { candles: Candle[]; provider: string };
@@ -914,20 +965,11 @@ function candleCacheKey(
 
 function readCachedCandles(key: string): CachedCandles | null {
   try {
-    const raw = window.localStorage.getItem(`mivo.backtesting.candles.v1:${key}`);
+    const raw = window.localStorage.getItem(`mivo.backtesting.candles.v2:${key}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<CachedCandles>;
     if (!Array.isArray(parsed.candles) || typeof parsed.provider !== "string") return null;
-    const candles = parsed.candles.filter(
-      (candle): candle is Candle =>
-        candle !== null &&
-        typeof candle === "object" &&
-        Number.isFinite(candle.time) &&
-        Number.isFinite(candle.open) &&
-        Number.isFinite(candle.high) &&
-        Number.isFinite(candle.low) &&
-        Number.isFinite(candle.close),
-    );
+    const candles = normalizeCandleData(parsed.candles);
     return candles.length ? { candles, provider: parsed.provider } : null;
   } catch {
     return null;
@@ -940,7 +982,7 @@ function writeCachedCandles(key: string, entry: CachedCandles) {
   if (entry.candles.length > 10_000) return;
 
   try {
-    const storageKey = `mivo.backtesting.candles.v1:${key}`;
+    const storageKey = `mivo.backtesting.candles.v2:${key}`;
     const previous = JSON.parse(window.localStorage.getItem(CANDLE_CACHE_INDEX) || "[]") as unknown;
     const keys = Array.isArray(previous)
       ? previous.filter((item): item is string => typeof item === "string")
@@ -1129,6 +1171,8 @@ export default function BacktestingLabPage() {
   const [journalMessage, setJournalMessage] = useState("");
   const [tradeMessage, setTradeMessage] = useState("");
   const [pageTheme, setPageTheme] = useState<"dark" | "light">("dark");
+  const [candleColors, setCandleColors] = useState<CandleColors>(DEFAULT_CANDLE_COLORS);
+  const [candleColorsReady, setCandleColorsReady] = useState(false);
   const [activeTool, setActiveTool] = useState<DrawingTool>("cursor");
   const [drawings, setDrawingsState] = useState<ChartDrawing[]>([]);
   const [drawingDraft, setDrawingDraftState] = useState<ChartDrawing | null>(null);
@@ -1198,6 +1242,31 @@ export default function BacktestingLabPage() {
   const latestCandleTimeRef = useRef(0);
   const replayAtLatestRef = useRef(true);
   const candlesLengthRef = useRef(candles.length);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(CANDLE_COLORS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<CandleColors>;
+        if (isHexColor(parsed.bullish) && isHexColor(parsed.bearish)) {
+          setCandleColors({ bullish: parsed.bullish, bearish: parsed.bearish });
+        }
+      }
+    } catch {
+      // Keep the standard chart colors when browser storage is unavailable.
+    } finally {
+      setCandleColorsReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!candleColorsReady) return;
+    try {
+      window.localStorage.setItem(CANDLE_COLORS_STORAGE_KEY, JSON.stringify(candleColors));
+    } catch {
+      // Color choices still apply to this session if storage is unavailable.
+    }
+  }, [candleColors, candleColorsReady]);
 
   const drawingStorageKey = `mivo.backtesting.drawings.v1:${assetClass}:${symbol}:${timeframe}`;
   const indicatorStorageKey = `mivo.backtesting.indicators.v1:${assetClass}:${symbol}:${timeframe}`;
@@ -1387,7 +1456,8 @@ export default function BacktestingLabPage() {
         TIMEFRAMES.find((item) => item.label === timeframe)?.seconds ?? 60;
       const currentBarStart =
         Math.floor(Date.now() / 1000 / intervalSeconds) * intervalSeconds;
-      return Math.min(selectedEnd, currentBarStart);
+      // Exclude the still-forming realtime candle from historical replay data.
+      return Math.min(selectedEnd, currentBarStart - 1);
     };
     const end = getEnd();
     if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
@@ -1454,7 +1524,7 @@ export default function BacktestingLabPage() {
           signal: controller.signal,
         });
         const result = (await response.json()) as CandleResponse;
-        const receivedCandles = result.candles;
+        const receivedCandles = normalizeCandleData(result.candles);
 
         if (!response.ok) {
           throw new Error(result.error || "Unable to load historical candles.");
@@ -1609,12 +1679,12 @@ export default function BacktestingLabPage() {
     });
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#42dfc1",
-      downColor: "#ff7187",
-      borderUpColor: "#42dfc1",
-      borderDownColor: "#ff7187",
-      wickUpColor: "#42dfc1",
-      wickDownColor: "#ff7187",
+      upColor: DEFAULT_CANDLE_COLORS.bullish,
+      downColor: DEFAULT_CANDLE_COLORS.bearish,
+      borderUpColor: DEFAULT_CANDLE_COLORS.bullish,
+      borderDownColor: DEFAULT_CANDLE_COLORS.bearish,
+      wickUpColor: DEFAULT_CANDLE_COLORS.bullish,
+      wickDownColor: DEFAULT_CANDLE_COLORS.bearish,
       priceLineVisible: false,
     });
     const sma20 = chart.addSeries(LineSeries, {
@@ -1714,6 +1784,17 @@ export default function BacktestingLabPage() {
       rsiPaneIndexRef.current = null;
     };
   }, [scheduleDrawingProjection]);
+
+  useEffect(() => {
+    seriesRef.current?.applyOptions({
+      upColor: candleColors.bullish,
+      borderUpColor: candleColors.bullish,
+      wickUpColor: candleColors.bullish,
+      downColor: candleColors.bearish,
+      borderDownColor: candleColors.bearish,
+      wickDownColor: candleColors.bearish,
+    });
+  }, [candleColors]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -3544,7 +3625,39 @@ export default function BacktestingLabPage() {
 
               </div>
 
-              <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-muted">
+              <details className="chart-candle-colors">
+                <summary aria-label="Customize candle colors" title="Candle colors">
+                  <span>Colors</span>
+                  <span className="chart-candle-color-swatches" aria-hidden="true">
+                    <i style={{ backgroundColor: candleColors.bullish }} />
+                    <i style={{ backgroundColor: candleColors.bearish }} />
+                  </span>
+                </summary>
+                <div className="chart-candle-colors-panel">
+                  <label>
+                    <span>Bullish / buy</span>
+                    <input
+                      aria-label="Bullish candle color"
+                      type="color"
+                      value={candleColors.bullish}
+                      onChange={(event) => setCandleColors((current) => ({ ...current, bullish: event.target.value }))}
+                    />
+                    <code>{candleColors.bullish.toUpperCase()}</code>
+                  </label>
+                  <label>
+                    <span>Bearish / sell</span>
+                    <input
+                      aria-label="Bearish candle color"
+                      type="color"
+                      value={candleColors.bearish}
+                      onChange={(event) => setCandleColors((current) => ({ ...current, bearish: event.target.value }))}
+                    />
+                    <code>{candleColors.bearish.toUpperCase()}</code>
+                  </label>
+                </div>
+              </details>
+
+              <div className="chart-market-values flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-muted">
                 <span>
                   O{" "}
                   <b className="text-foreground">
@@ -3742,7 +3855,7 @@ export default function BacktestingLabPage() {
             >
               <div
                 ref={chartContainerRef}
-                className="chart-container h-[440px] w-full sm:h-[560px] xl:h-[calc(100vh-390px)] xl:min-h-[520px]"
+                className="chart-container h-[520px] w-full sm:h-[680px] xl:h-[calc(100vh-300px)] xl:min-h-[640px]"
               />
               <div className="pointer-events-none absolute inset-0 z-10">
                 {!candles.length && (
