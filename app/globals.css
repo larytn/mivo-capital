@@ -6,14 +6,17 @@
   --brand-ivory: #f2f0e9;
   --brand-charcoal: #1b1e24;
   --brand-obsidian: #080a0d;
+  --brand-mint: #8fd9b3;
+  --brand-forest: #276c50;
   --background: var(--brand-obsidian);
   --foreground: var(--brand-ivory);
   --surface: var(--brand-charcoal);
   --surface-raised: color-mix(in srgb, var(--brand-charcoal) 86%, var(--brand-platinum));
   --border: color-mix(in srgb, var(--brand-charcoal) 72%, var(--brand-platinum));
   --muted: var(--brand-platinum);
-  --accent: var(--brand-platinum);
+  --accent: var(--brand-mint);
   --accent-foreground: var(--brand-obsidian);
+  --ambient-glow: rgb(38 157 113 / 18%);
   --positive: #65b88d;
   --negative: #d57b82;
   --font-montserrat: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -28,8 +31,9 @@ html[data-theme="light"] {
   --surface-raised: color-mix(in srgb, var(--brand-ivory) 48%, var(--brand-platinum));
   --border: var(--brand-platinum);
   --muted: var(--brand-charcoal);
-  --accent: var(--brand-charcoal);
+  --accent: var(--brand-forest);
   --accent-foreground: var(--brand-ivory);
+  --ambient-glow: rgb(143 217 179 / 25%);
   --positive: #267a58;
   --negative: #b84c52;
 }
@@ -63,15 +67,16 @@ img, video, canvas { max-width: 100%; }
   --surface-raised: color-mix(in srgb, var(--brand-charcoal) 86%, var(--brand-platinum));
   --border: color-mix(in srgb, var(--brand-charcoal) 72%, var(--brand-platinum));
   --muted: var(--brand-platinum);
-  --accent: var(--brand-platinum);
+  --accent: var(--brand-mint);
   --accent-foreground: var(--brand-obsidian);
+  --ambient-glow: rgb(38 157 113 / 18%);
   --positive: #65b88d;
   --negative: #d57b82;
 }
 html { min-height: 100%; background: var(--background); }
 body {
   min-height: 100%; margin: 0;
-  background: radial-gradient(ellipse at 88% 0%, color-mix(in srgb, var(--accent) 3.5%, transparent), transparent 34rem), var(--background);
+  background: radial-gradient(ellipse at 88% 0%, var(--ambient-glow), transparent 34rem), var(--background);
   color: var(--foreground);
   font-family: var(--font-montserrat);
   transition: background-color 180ms ease, color 180ms ease;
@@ -160,7 +165,7 @@ button { cursor: pointer; }
 .install-guide ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.9; }
 .install-guide strong { color: var(--foreground); }
 .install-guide-note { margin: 16px 0 0; border-top: 1px solid var(--border); padding-top: 13px; color: var(--muted); font-size: 11px; line-height: 1.55; }
-.workspace-content > main { width: 100%; min-width: 0; min-height: 100vh; min-height: 100svh; margin-left: 0; padding-top: 0; }
+.workspace-content > main { width: 100%; min-width: 0; min-height: 100vh; min-height: 100svh; margin-left: 0; padding-top: 0; background-color: var(--background); background-image: radial-gradient(ellipse at 78% 0%, var(--ambient-glow), transparent 40rem); }
 .workspace-content > main > *,
 .workspace-content > main :where(.flex, .inline-flex, .grid, .inline-grid) { min-width: 0; }
 .workspace-scrim { display: none; }
