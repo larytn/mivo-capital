@@ -78,6 +78,10 @@ const TWELVE_DATA_INTERVAL_SECONDS: Record<string, number> = {
 // own catalog uses before requesting candles.
 const TWELVE_DATA_SYMBOL_ALIASES: Partial<Record<AssetClass, Record<string, string>>> = {
   metal: {
+    XAUUSD: "XAU/USD",
+    XAGUSD: "XAG/USD",
+    XPTUSD: "XPT/USD",
+    XPDUSD: "XPD/USD",
     COPPER: "HG1",
   },
   commodity: {
