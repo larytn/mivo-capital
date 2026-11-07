@@ -149,6 +149,17 @@ button { cursor: pointer; }
 .workspace-crumb strong { color: var(--foreground); font-weight: 700; }
 .workspace-mobile-menu { display: none; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); padding: 7px 10px; color: var(--foreground); }
 .workspace-profile-link { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--surface); text-decoration: none; }
+.workspace-install-button { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); padding: 0 10px; color: var(--foreground); font-size: 11px; font-weight: 650; white-space: nowrap; }
+.workspace-install-button:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: var(--surface-raised); }
+.workspace-install-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.install-guide-scrim { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgb(0 0 0 / 62%); padding: 20px; }
+.install-guide { position: relative; width: min(100%, 400px); border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 24px; color: var(--foreground); box-shadow: 0 24px 80px rgb(0 0 0 / 34%); }
+.install-guide-close { position: absolute; top: 10px; right: 12px; display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 23px; }
+.install-guide-kicker { margin: 0; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .18em; }
+.install-guide h2 { margin: 8px 0 14px; font-size: 19px; font-weight: 750; }
+.install-guide ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.9; }
+.install-guide strong { color: var(--foreground); }
+.install-guide-note { margin: 16px 0 0; border-top: 1px solid var(--border); padding-top: 13px; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .workspace-content > main { width: 100%; min-width: 0; min-height: 100vh; min-height: 100svh; margin-left: 0; padding-top: 0; }
 .workspace-content > main > *,
 .workspace-content > main :where(.flex, .inline-flex, .grid, .inline-grid) { min-width: 0; }
@@ -167,6 +178,8 @@ button { cursor: pointer; }
   .workspace-content > main { padding-top: 0; }
   .workspace-crumb { font-size: 10px; }
   .workspace-topbar-left, .workspace-topbar-actions { gap: 8px; }
+  .workspace-install-button { width: 34px; height: 34px; min-height: 34px; justify-content: center; padding: 0; }
+  .workspace-install-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
   .chart-workspace { flex-direction: column; }
   .chart-drawing-rail { width: 100%; height: auto; min-height: 46px; flex: 0 0 auto; flex-direction: row; flex-wrap: wrap; align-content: flex-start; justify-content: flex-start; overflow: visible; border-right: 0; border-bottom: 1px solid var(--border); padding: 5px 7px; }
   .chart-drawing-rail > * { flex: 0 0 auto; }
@@ -174,6 +187,12 @@ button { cursor: pointer; }
   .chart-rail-divider { width: 1px; height: 22px; flex: 0 0 1px; margin: 0 3px; }
   .backtesting-page .chart-timeframe-list { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
   .backtesting-page .chart-container { height: 360px; }
+}
+
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top); }
+  .workspace-sidebar { top: env(safe-area-inset-top); bottom: env(safe-area-inset-bottom); }
+  .workspace-topbar { top: env(safe-area-inset-top); }
 }
 
 /* Keep page cards and columns compact across the product. */
