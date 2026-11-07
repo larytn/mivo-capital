@@ -18,6 +18,7 @@ import {
   type MouseEventParams,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { MivoMark } from "@/app/components/mivo-mark";
 
 type AssetClass =
   | "crypto"
@@ -579,7 +580,7 @@ async function loadDerivCandlesInBrowser(
   if (signal.aborted) throw new Error("Market data request cancelled.");
 
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
+    const socket = new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
     let settled = false;
     const finish = (callback: () => void) => {
       if (settled) return;
@@ -614,7 +615,6 @@ async function loadDerivCandlesInBrowser(
         style: "candles",
         granularity,
         adjust_start_time: 1,
-        subscribe: 0,
       }));
     });
     socket.addEventListener("message", (event) => {
@@ -847,10 +847,13 @@ const MARKETS: Record<AssetClass, Market> = {
   synthetic: {
     label: "Synthetics",
     symbols: [
-      "R_10", "R_25", "R_50", "R_75", "R_100", "1HZ10V", "1HZ25V",
-      "1HZ50V", "1HZ75V", "1HZ100V", "1HZ150V", "1HZ250V", "BOOM300N",
-      "BOOM500", "BOOM1000", "CRASH300N", "CRASH500", "CRASH1000",
-      "STEP INDEX", "JD10", "JD25", "JD50", "JD75", "JD100",
+      "R_10", "R_25", "R_50", "R_75", "R_100",
+      "1HZ10V", "1HZ15V", "1HZ25V", "1HZ30V", "1HZ50V", "1HZ75V",
+      "1HZ90V", "1HZ100V",
+      "BOOM50", "BOOM150N", "BOOM300N", "BOOM500", "BOOM600", "BOOM900", "BOOM1000",
+      "CRASH50", "CRASH150N", "CRASH300N", "CRASH500", "CRASH600", "CRASH900", "CRASH1000",
+      "STEP INDEX", "stpRNG2", "stpRNG3", "stpRNG4", "stpRNG5",
+      "JD10", "JD25", "JD50", "JD75", "JD100",
     ],
   },
   stock: {
@@ -3375,7 +3378,7 @@ export default function BacktestingLabPage() {
     <main className="backtesting-page min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-background/95">
         <div className="mx-auto flex w-full max-w-none items-center justify-between gap-4 px-4 py-3 lg:px-5">
-          <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 font-black text-accent">M</div><div><p className="text-sm font-semibold tracking-wide">BACKTESTING LAB</p><p className="text-xs text-muted">Replay the market. Test your edge.</p></div></div>
+          <div className="flex items-center gap-3"><MivoMark size={40} className="rounded-xl border border-accent/20" /><div><p className="text-sm font-semibold tracking-wide">BACKTESTING LAB</p><p className="text-xs text-muted">Replay the market. Test your edge.</p></div></div>
           <span className={`hidden rounded-full border px-3 py-1 text-xs sm:inline-flex ${dataError ? "border-amber-300/30 bg-amber-300/10 text-amber-200" : "border-accent/20 bg-accent/10 text-accent"}`}>
             {dataProvider ? `REAL MARKET DATA | ${dataProvider}` : loading ? "LOADING MARKET DATA" : dataError ? "DATA UNAVAILABLE" : "MARKET DATA"}
           </span>

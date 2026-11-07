@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { MivoMark } from "@/app/components/mivo-mark";
 
 type Ticket = {
   id: string;
@@ -264,9 +265,7 @@ export default function SupportPage() {
                   {ticket.adminReply ? (
                     <div className="border-t border-green-500/20 bg-green-500/[0.06] p-4 sm:p-6">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-[10px] font-black text-black">
-                          M
-                        </div>
+                        <MivoMark size={28} className="rounded-full border border-green-500/30" />
 
                         <div>
                           <p className="text-xs font-bold text-green-400 sm:text-sm">

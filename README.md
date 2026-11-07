@@ -26,10 +26,10 @@ Required for the launch services:
 - `JWT_SECRET`: private signing key for member and admin sessions. Set a strong, unique value in production.
 - `META_API_TOKEN`: MetaApi token for connecting and syncing MT5 accounts.
 - `CRON_SECRET`: secret used by Vercel's scheduled MT5 sync endpoint.
+- `TWELVE_DATA_API_KEY`: required in Vercel Production for spot-metal backtesting data (XAU/USD, XAG/USD, XPT/USD, and XPD/USD). Forex pairs have a Yahoo Finance fallback.
 
 Optional integrations:
 
-- `TWELVE_DATA_API_KEY`: additional historical candle source; the app has other market data sources where available.
 - `OPENAI_API_KEY`: community post moderation. Without it, submitted posts stay private for admin review.
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: image and chat media uploads. Built-in chat content remains available without uploads.
 - `NEXT_PUBLIC_APP_URL`: public site URL used to generate account links.

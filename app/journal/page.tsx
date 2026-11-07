@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { MivoMark } from "@/app/components/mivo-mark";
 
 type Trade = {
   id: string;
@@ -289,9 +290,7 @@ export default function JournalPage() {
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-surface-raised text-lg font-bold">
-                M
-              </div>
+              <MivoMark size={44} className="rounded-xl border border-border" />
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">

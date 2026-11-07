@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/app/components/brand-logo";
+import { MivoMark } from "@/app/components/mivo-mark";
 
 const modules = [
   { number: "01", icon: "C", name: "Community", description: "Share market ideas, discuss setups, and learn alongside other traders.", href: "/community", label: "Explore community", tag: "SOCIAL" },
@@ -145,22 +146,18 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-3 p-4 sm:p-5">
                 {[
                   {
-                    icon: "M",
                     title: "Community",
                     detail: "Ideas & discussions",
                   },
                   {
-                    icon: "M",
                     title: "Trade journal",
                     detail: "Records & analytics",
                   },
                   {
-                    icon: "M",
                     title: "Backtesting",
                     detail: "Replay & research",
                   },
                   {
-                    icon: "M",
                     title: "Trader chat",
                     detail: "Shared conversations",
                   },
@@ -169,9 +166,7 @@ export default function Home() {
                     key={item.title}
                     className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 transition hover:border-accent/30"
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-lg text-accent">
-                      {item.icon}
-                    </span>
+                    <MivoMark size={36} className="rounded-lg border border-accent/20" />
                     <p className="mt-4 text-sm font-semibold">{item.title}</p>
                     <p className="mt-1 text-xs leading-5 text-zinc-500">
                       {item.detail}

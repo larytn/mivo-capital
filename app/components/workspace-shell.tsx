@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { ThemeToggle } from "./theme-provider";
 import { BrandLogo } from "./brand-logo";
+import { MivoMark } from "./mivo-mark";
 
 type NavIconName = "overview" | "backtest" | "journal" | "sync" | "community" | "chat" | "signals" | "announcements" | "profile" | "settings" | "support";
 type NavItem = { label: string; href: string; icon: NavIconName };
@@ -78,10 +79,10 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         <p className="workspace-nav-label">Your account</p>
         {accountItems.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} aria-current={isActive(item.href) ? "page" : undefined} className={`workspace-nav-link ${isActive(item.href) ? "is-active" : ""}`}><span className="workspace-nav-icon"><WorkspaceIcon name={item.icon} /></span><span>{item.label}</span></Link>)}
       </nav>
-      <div className="workspace-sidebar-footer"><div className="workspace-member"><span className="workspace-member-avatar">M</span><span className="min-w-0"><span className="workspace-member-name block">Mivo member</span><span className="workspace-member-caption block">Your trading workspace</span></span></div><button type="button" onClick={logout} className="workspace-signout">Sign out</button></div>
+      <div className="workspace-sidebar-footer"><div className="workspace-member"><MivoMark className="workspace-member-avatar" /><span className="min-w-0"><span className="workspace-member-name block">Mivo member</span><span className="workspace-member-caption block">Your trading workspace</span></span></div><button type="button" onClick={logout} className="workspace-signout">Sign out</button></div>
     </aside>
     <div className="workspace-content">
-      <header className="workspace-topbar"><div className="workspace-topbar-left"><button type="button" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} className="workspace-mobile-menu">{"\u2630"}</button><p className="workspace-crumb">Workspace <span className="mx-2">/</span><strong>{title}</strong></p></div><div className="workspace-topbar-actions"><ThemeToggle /><Link href="/profile" aria-label="Open profile" className="workspace-profile-link">M</Link></div></header>
+      <header className="workspace-topbar"><div className="workspace-topbar-left"><button type="button" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} className="workspace-mobile-menu">{"\u2630"}</button><p className="workspace-crumb">Workspace <span className="mx-2">/</span><strong>{title}</strong></p></div><div className="workspace-topbar-actions"><ThemeToggle /><Link href="/profile" aria-label="Open profile" className="workspace-profile-link"><MivoMark size={26} className="border-0" /></Link></div></header>
       {children}
     </div>
   </div>;

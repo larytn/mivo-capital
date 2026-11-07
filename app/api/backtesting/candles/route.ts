@@ -329,7 +329,7 @@ async function getTwelveDataCandles(
 
   if (!apiKey) {
     throw new Error(
-      "Twelve Data API key is missing. Add TWELVE_DATA_API_KEY to .env.local and restart the development server.",
+      "Twelve Data API key is missing. Add TWELVE_DATA_API_KEY to the app's environment settings. For the deployed site, configure it in Vercel Production.",
     );
   }
 
@@ -560,7 +560,7 @@ async function getDerivCandles(
 
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(
-      "wss://ws.derivws.com/websockets/v3?app_id=1089",
+      "wss://api.derivws.com/trading/v1/options/ws/public",
     );
 
     let settled = false;
@@ -605,7 +605,6 @@ async function getDerivCandles(
             style: "candles",
             granularity,
             adjust_start_time: 1,
-            subscribe: 0,
           }),
         );
       } catch {

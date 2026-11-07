@@ -14,6 +14,7 @@ import {
 } from "react";
 import { CHAT_GIFS, CHAT_REACTION_EMOJIS, CHAT_STICKER_ARCHIVE, CHAT_STICKERS, type ChatGifDefinition, type ChatStickerDefinition } from "@/lib/chat-catalog";
 import { MemberAvatar } from "@/app/components/member-avatar";
+import { MivoMark } from "@/app/components/mivo-mark";
 
 type ReplyPreview = {
   id: string;
@@ -850,7 +851,7 @@ export default function ChatPage() {
         <aside className="chat-room-list" aria-label="Conversations">
           <div className="chat-room-list-heading"><h2>Chats</h2></div>
           <Link href="/chat" className="chat-room-item" aria-current="page">
-            <span className="chat-room-avatar">MT</span>
+            <MivoMark className="chat-room-avatar" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">Mivo Traders</span>
               <span className="chat-room-preview mt-1 block">{latestMessage ? getMessagePreview(latestMessage, currentUserId) : "Start a conversation"}</span>
@@ -861,7 +862,7 @@ export default function ChatPage() {
 
         <section className="chat-conversation" aria-label="Mivo Traders group conversation">
           <header className="chat-room-header">
-            <span className="chat-room-avatar">MT</span>
+            <MivoMark className="chat-room-avatar" />
             <div className="chat-room-header-copy">
               <h1>Mivo Traders</h1>
               <p>Group chat · Mivo traders</p>

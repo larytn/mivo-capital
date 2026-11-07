@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { MemberAvatar } from "@/app/components/member-avatar";
+import { MivoMark } from "@/app/components/mivo-mark";
 
 type Comment = {
   id: string;
@@ -485,7 +486,7 @@ export default function CommunityPage() {
                   <article key={item.id} className="community-post">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <div className="community-post-author"><span className="community-post-avatar">M</span><p className="truncate text-sm font-semibold">Mivo team</p><time className="text-xs text-muted">{formatDate(post.createdAt)}</time></div>
+                        <div className="community-post-author"><MivoMark size={36} className="community-post-avatar" /><p className="truncate text-sm font-semibold">Mivo team</p><time className="text-xs text-muted">{formatDate(post.createdAt)}</time></div>
                       </div>
                       <span className="community-post-category">{item.category}</span>
                     </div>
