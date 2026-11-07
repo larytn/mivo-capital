@@ -11,8 +11,7 @@ export async function GET(request: NextRequest) {
   const user = session(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const type = request.nextUrl.searchParams.get("type") || "";
-  if (type === "ACADEMY") return NextResponse.json({ error: "Mivo Academy is planned for a later release." }, { status: 404 });
-  const allowed = ["ANNOUNCEMENT"];
+  const allowed = ["ANNOUNCEMENT", "ACADEMY"];
   if (!allowed.includes(type)) return NextResponse.json({ error: "Unknown content type." }, { status: 400 });
   const userId = user.id || user.userId;
   if (!userId) return NextResponse.json({ error: "Invalid session." }, { status: 401 });
@@ -42,10 +41,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const type = typeof body.type === "string" ? body.type : "";
-    if (type === "ACADEMY") return NextResponse.json({ error: "Mivo Academy publishing is paused for this release." }, { status: 404 });
     const title = typeof body.title === "string" ? body.title.trim() : "";
     const text = typeof body.body === "string" ? body.body.trim() : "";
-    if (type !== "ANNOUNCEMENT" || !title || !text) return NextResponse.json({ error: "Provide a title and announcement content." }, { status: 400 });
+    if (!(type === "ANNOUNCEMENT" || type === "ACADEMY") || !title || !text) return NextResponse.json({ error: "Choose Academy or Announcement and provide a title and content." }, { status: 400 });
     const item = await prisma.ecosystemContent.create({ data: { type, title, body: text, symbol: typeof body.symbol === "string" ? body.symbol.trim().toUpperCase() || null : null, direction: typeof body.direction === "string" ? body.direction.trim() || null : null, entry: typeof body.entry === "string" ? body.entry.trim() || null : null, stopLoss: typeof body.stopLoss === "string" ? body.stopLoss.trim() || null : null, takeProfit: typeof body.takeProfit === "string" ? body.takeProfit.trim() || null : null, createdById } });
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {

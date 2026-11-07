@@ -8,7 +8,7 @@ import { BrandLogo } from "./brand-logo";
 import { MivoMark } from "./mivo-mark";
 import { InstallAppButton } from "./install-app-button";
 
-type NavIconName = "overview" | "backtest" | "journal" | "sync" | "community" | "chat" | "signals" | "announcements" | "profile" | "settings" | "support";
+type NavIconName = "overview" | "backtest" | "journal" | "sync" | "academy" | "community" | "chat" | "signals" | "announcements" | "profile" | "settings" | "support";
 type NavItem = { label: string; href: string; icon: NavIconName };
 type NavSection = { label: string; items: NavItem[] };
 
@@ -18,6 +18,9 @@ const sections: NavSection[] = [
     { label: "Backtesting lab", href: "/backtesting", icon: "backtest" },
     { label: "Trade journal", href: "/journal", icon: "journal" },
     { label: "MT5 journal sync", href: "/automation", icon: "sync" },
+  ] },
+  { label: "Learning", items: [
+    { label: "Mivo Academy", href: "/academy", icon: "academy" },
   ] },
   { label: "Community", items: [
     { label: "Feed & discussions", href: "/community", icon: "community" },
@@ -30,6 +33,7 @@ const pageTitles = new Map([
   ["/dashboard", "Overview"],
   ["/community", "Feed & discussions"], ["/chat", "Trader chat"], ["/journal", "Trade journal"],
   ["/backtesting", "Backtesting lab"], ["/automation", "MT5 journal sync"], ["/announcements", "Announcements"],
+  ["/academy", "Mivo Academy"],
   ["/signals", "VIP Signals"],
   ["/profile", "Profile"], ["/settings", "Settings"], ["/support", "Support"], ["/referrals", "Referrals"],
 ]);
@@ -40,6 +44,7 @@ function WorkspaceIcon({ name }: { name: NavIconName }) {
     backtest: <><path d="M4 19V5M4 19h16" /><path d="m7 15 4-4 3 2 5-6" /></>,
     journal: <><rect x="5" y="3.5" width="14" height="17" rx="2" /><path d="M8.5 8h7M8.5 12h7M8.5 16h4" /></>,
     sync: <><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.5 9a7 7 0 0 1 11.8-2L20 7M4 17l2.7.2A7 7 0 0 0 18.5 15" /></>,
+    academy: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5v-12Z" /><path d="M4 16.5A2.5 2.5 0 0 1 6.5 14H20M8 7h8M8 10h6" /></>,
     community: <><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-1a5.5 5.5 0 0 1 11 0v1M16 5.5a3 3 0 0 1 0 5.8M17 14a4.5 4.5 0 0 1 3.5 4.4v1" /></>,
     chat: <><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.6 8.6 0 0 1-3.5-.7L4 20l1.2-3.6A7.2 7.2 0 0 1 4 12c0-4.3 3.6-7.5 8-7.5s8 2.7 8 7Z" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></>,
     signals: <><path d="M3 12h3l2-6 4 12 3-8 2 2h4" /></>,

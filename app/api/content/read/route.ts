@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 import { databaseErrorMessage } from "@/lib/database-error";
 
-const TRACKED_TYPES = ["ANNOUNCEMENT"] as const;
+const TRACKED_TYPES = ["ANNOUNCEMENT", "ACADEMY"] as const;
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const contentType = typeof body.contentType === "string" ? body.contentType : "";
     if (!(TRACKED_TYPES as readonly string[]).includes(contentType)) {
-      return NextResponse.json({ error: "Choose Announcements." }, { status: 400 });
+      return NextResponse.json({ error: "Choose Academy or Announcements." }, { status: 400 });
     }
 
     const lastViewedAt = new Date();

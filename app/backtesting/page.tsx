@@ -3386,7 +3386,12 @@ export default function BacktestingLabPage() {
       </header>
 
       <div className="mx-auto w-full max-w-none space-y-4 px-3 py-5 sm:px-4 lg:px-5">
-        <section className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-surface p-4">
+        <details className="chart-settings-panel rounded-xl border border-border bg-surface">
+          <summary className="chart-settings-summary">
+            <span>Replay settings</span>
+            <span className="chart-settings-summary-meta">{startDate} → {endDate} · {formatMoney(initialBalance)} starting balance</span>
+          </summary>
+          <div className="chart-settings-controls flex flex-wrap items-end gap-3 p-4">
           <div>
             <label htmlFor="range-start" className="mb-1 block text-xs text-muted">Replay start (UTC)</label>
             <input
@@ -3475,11 +3480,12 @@ export default function BacktestingLabPage() {
             {loading ? "Loading…" : "Refresh candles"}
           </button>
           </div>
-        </section>
+          </div>
+        </details>
 
         <section className="grid min-w-0 gap-4">
           <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="chart-symbol-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
               <div className="flex flex-wrap items-center gap-3">
                 <select
                   value={assetClass}
@@ -3574,7 +3580,7 @@ export default function BacktestingLabPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border bg-background/50 px-3 py-2 sm:px-4">
+            <div className="chart-market-status flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border bg-background/50 px-3 py-2 sm:px-4">
               <div>
                 <span className="font-semibold">{symbol}</span>
                 <span className="ml-2 text-xs text-muted">
@@ -3623,6 +3629,7 @@ export default function BacktestingLabPage() {
                   <div
                     key={group.id}
                     className="relative"
+                    data-tool-group={group.id}
                     onPointerEnter={() => setOpenToolGroup(group.id)}
                     onPointerLeave={() => {
                       setOpenToolGroup((open) => open === group.id ? null : open);
@@ -3642,7 +3649,7 @@ export default function BacktestingLabPage() {
                     {openToolGroup === group.id && (
                       <>
                         <div className="absolute left-full top-0 z-[59] hidden h-[min(70vh,28rem)] w-2 sm:block" aria-hidden="true" />
-                        <div className="absolute left-0 top-[calc(100%+0.5rem)] z-[60] max-h-[min(70vh,28rem)] w-60 max-w-[calc(100vw-4rem)] overflow-y-auto rounded-xl border border-border bg-surface p-2 text-foreground shadow-2xl sm:left-[calc(100%+0.5rem)] sm:top-0 sm:max-w-none">
+                        <div className="chart-tool-group-menu absolute left-0 top-[calc(100%+0.5rem)] z-[60] max-h-[min(70vh,28rem)] w-60 max-w-[calc(100vw-4rem)] overflow-y-auto rounded-xl border border-border bg-surface p-2 text-foreground shadow-2xl sm:left-[calc(100%+0.5rem)] sm:top-0 sm:max-w-none">
                           <p className="px-2 pb-1.5 pt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted">{group.label}</p>
                           {group.tools.map(([tool, label]) => (
                             <button
@@ -4022,9 +4029,11 @@ export default function BacktestingLabPage() {
                   )}
                 </div>
               )}
-              <div className="pointer-events-none absolute left-2 right-2 top-2 z-[30] flex flex-col items-start gap-2 lg:right-14 lg:flex-row lg:items-start lg:justify-between">
+              <div className="chart-floating-bar pointer-events-none absolute left-2 right-2 top-2 z-[30] flex flex-col items-start gap-2 lg:right-14 lg:flex-row lg:items-start lg:justify-between">
+                <details className="chart-floating-menu chart-floating-menu-replay">
+                  <summary className="chart-floating-summary">Replay &amp; indicators</summary>
                 <div
-                  className="pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg border border-border/80 bg-surface/90 p-1 shadow-lg backdrop-blur"
+                  className="chart-floating-menu-body pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg border border-border/80 bg-surface/90 p-1 shadow-lg backdrop-blur"
                   onPointerDown={(event) => event.stopPropagation()}
                   onPointerMove={(event) => event.stopPropagation()}
                   onPointerUp={(event) => event.stopPropagation()}
@@ -4148,9 +4157,12 @@ export default function BacktestingLabPage() {
                     )}
                   </div>
                 </div>
+                </details>
 
+                <details className="chart-floating-menu chart-floating-menu-trade">
+                  <summary className="chart-floating-summary">Trade ticket</summary>
                 <div
-                  className="pointer-events-auto w-full rounded-lg border border-border/80 bg-surface/90 p-1.5 shadow-lg backdrop-blur lg:w-auto"
+                  className="chart-floating-menu-body pointer-events-auto w-full rounded-lg border border-border/80 bg-surface/90 p-1.5 shadow-lg backdrop-blur lg:w-auto"
                   onPointerDown={(event) => event.stopPropagation()}
                   onPointerMove={(event) => event.stopPropagation()}
                   onPointerUp={(event) => event.stopPropagation()}
@@ -4206,6 +4218,7 @@ export default function BacktestingLabPage() {
                     </p>
                   )}
                 </div>
+                </details>
               </div>
               {orderTicketSide && currentCandle && (
                 <div
