@@ -8,6 +8,7 @@ import {
   useState,
   type PointerEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   CandlestickSeries,
   createChart,
@@ -1136,11 +1137,35 @@ function drawingToolName(tool: DrawingTool) {
   return "Drawing";
 }
 
+type PickerPosition = { top: number; left: number };
+
+function getPickerPosition(
+  anchor: HTMLElement | null,
+  width: number,
+  height: number,
+  align: "left" | "right" = "left",
+): PickerPosition | null {
+  if (!anchor || typeof window === "undefined") return null;
+  const bounds = anchor.getBoundingClientRect();
+  const preferredLeft = align === "right" ? bounds.right - width : bounds.left;
+  const left = Math.min(Math.max(12, preferredLeft), window.innerWidth - width - 12);
+  const preferredTop = bounds.bottom + 7;
+  const top = preferredTop + height <= window.innerHeight - 12
+    ? preferredTop
+    : Math.max(12, bounds.top - height - 7);
+  return { top, left };
+}
+
 export default function BacktestingLabPage() {
   const [assetClass, setAssetClass] = useState<AssetClass>("crypto");
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [timeframe, setTimeframe] =
     useState<(typeof TIMEFRAMES)[number]["label"]>("15m");
+  const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false);
+  const [timeframeMenuPosition, setTimeframeMenuPosition] = useState<PickerPosition | null>(null);
+  const [candleColorsMenuOpen, setCandleColorsMenuOpen] = useState(false);
+  const [candleColorsMenuPosition, setCandleColorsMenuPosition] = useState<PickerPosition | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [visibleCount, setVisibleCount] = useState(180);
@@ -1222,6 +1247,10 @@ export default function BacktestingLabPage() {
   }, [scheduleDrawingProjection]);
 
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const timeframePickerRef = useRef<HTMLDivElement | null>(null);
+  const timeframePopoverRef = useRef<HTMLDivElement | null>(null);
+  const candleColorsPickerRef = useRef<HTMLButtonElement | null>(null);
+  const candleColorsPopoverRef = useRef<HTMLDivElement | null>(null);
   const drawingOverlayRef = useRef<SVGSVGElement | null>(null);
   const replayPlacementPointerRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -1242,6 +1271,10 @@ export default function BacktestingLabPage() {
   const latestCandleTimeRef = useRef(0);
   const replayAtLatestRef = useRef(true);
   const candlesLengthRef = useRef(candles.length);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     try {
@@ -1267,6 +1300,49 @@ export default function BacktestingLabPage() {
       // Color choices still apply to this session if storage is unavailable.
     }
   }, [candleColors, candleColorsReady]);
+
+  useEffect(() => {
+    const closePickersOnOutsidePointer = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!timeframePickerRef.current?.contains(target) && !timeframePopoverRef.current?.contains(target)) {
+        setTimeframeMenuOpen(false);
+      }
+      if (!candleColorsPickerRef.current?.contains(target) && !candleColorsPopoverRef.current?.contains(target)) {
+        setCandleColorsMenuOpen(false);
+      }
+    };
+    const closePickersOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setTimeframeMenuOpen(false);
+      setCandleColorsMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closePickersOnOutsidePointer);
+    document.addEventListener("keydown", closePickersOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closePickersOnOutsidePointer);
+      document.removeEventListener("keydown", closePickersOnEscape);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateTimeframePosition = () => {
+      if (timeframeMenuOpen) {
+        setTimeframeMenuPosition(getPickerPosition(timeframePickerRef.current, 208, 220));
+      }
+      if (candleColorsMenuOpen) {
+        setCandleColorsMenuPosition(getPickerPosition(candleColorsPickerRef.current, 238, 116, "right"));
+      }
+    };
+    updateTimeframePosition();
+    window.addEventListener("resize", updateTimeframePosition);
+    window.addEventListener("scroll", updateTimeframePosition, true);
+    return () => {
+      window.removeEventListener("resize", updateTimeframePosition);
+      window.removeEventListener("scroll", updateTimeframePosition, true);
+    };
+  }, [timeframeMenuOpen, candleColorsMenuOpen]);
 
   const drawingStorageKey = `mivo.backtesting.drawings.v1:${assetClass}:${symbol}:${timeframe}`;
   const indicatorStorageKey = `mivo.backtesting.indicators.v1:${assetClass}:${symbol}:${timeframe}`;
@@ -3596,44 +3672,104 @@ export default function BacktestingLabPage() {
                   ))}
                 </select>
 
-                <div className="chart-timeframe-list flex min-w-0 items-center gap-1 rounded-lg bg-background p-1">
-                  {TIMEFRAMES.map((item) => (
-                    <button
-                      key={item.label}
-                      onClick={() => {
-                        setTimeframe(item.label);
-                        setPlacingReplayStart(false);
-                        setReplayPlacementX(null);
-                        setSelectedDrawingId(null);
-                        setDrawingSettingsOpen(false);
-                        setVisibleCount(2);
-                        replayAtLatestRef.current = false;
-                        setPlaying(false);
-                        setTrades([]);
-                        setCandles([]);
-                      }}
-                      className={`rounded-md px-2.5 py-1.5 text-xs ${
-                        timeframe === item.label
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted hover:text-white"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-
               </div>
 
-              <details className="chart-candle-colors">
-                <summary aria-label="Customize candle colors" title="Candle colors">
+              <div className="chart-timeframe-picker" ref={timeframePickerRef}>
+                <button
+                  type="button"
+                  className="chart-timeframe-trigger"
+                  aria-controls="backtesting-timeframe-menu"
+                  aria-haspopup="menu"
+                  aria-expanded={timeframeMenuOpen}
+                  onClick={() => {
+                    const nextOpen = !timeframeMenuOpen;
+                    setTimeframeMenuOpen(nextOpen);
+                    if (nextOpen) {
+                      setTimeframeMenuPosition(getPickerPosition(timeframePickerRef.current, 208, 220));
+                      setCandleColorsMenuOpen(false);
+                    }
+                  }}
+                >
+                  <span>{timeframe}</span><span aria-hidden="true">⌄</span>
+                </button>
+              </div>
+
+              <div className="chart-candle-colors">
+                <button
+                  ref={candleColorsPickerRef}
+                  type="button"
+                  className="chart-candle-colors-trigger"
+                  aria-label="Customize candle colors"
+                  aria-controls="backtesting-candle-colors-menu"
+                  aria-haspopup="dialog"
+                  aria-expanded={candleColorsMenuOpen}
+                  title="Candle colors"
+                  onClick={() => {
+                    const nextOpen = !candleColorsMenuOpen;
+                    setCandleColorsMenuOpen(nextOpen);
+                    if (nextOpen) {
+                      setCandleColorsMenuPosition(getPickerPosition(candleColorsPickerRef.current, 238, 116, "right"));
+                      setTimeframeMenuOpen(false);
+                    }
+                  }}
+                >
                   <span>Colors</span>
                   <span className="chart-candle-color-swatches" aria-hidden="true">
                     <i style={{ backgroundColor: candleColors.bullish }} />
                     <i style={{ backgroundColor: candleColors.bearish }} />
                   </span>
-                </summary>
-                <div className="chart-candle-colors-panel">
+                </button>
+              </div>
+
+              {portalReady && timeframeMenuOpen && timeframeMenuPosition && createPortal(
+                <div
+                  ref={timeframePopoverRef}
+                  id="backtesting-timeframe-menu"
+                  className="chart-timeframe-popover"
+                  role="menu"
+                  aria-label="Choose timeframe"
+                  style={{ position: "fixed", top: timeframeMenuPosition.top, left: timeframeMenuPosition.left, zIndex: 1000 }}
+                >
+                  <p>Timeframe</p>
+                  <div>
+                    {TIMEFRAMES.map((item) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={timeframe === item.label}
+                        className={timeframe === item.label ? "is-selected" : ""}
+                        onClick={() => {
+                          setTimeframe(item.label);
+                          setTimeframeMenuOpen(false);
+                          setPlacingReplayStart(false);
+                          setReplayPlacementX(null);
+                          setSelectedDrawingId(null);
+                          setDrawingSettingsOpen(false);
+                          setVisibleCount(2);
+                          replayAtLatestRef.current = false;
+                          setPlaying(false);
+                          setTrades([]);
+                          setCandles([]);
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>,
+                document.body,
+              )}
+
+              {portalReady && candleColorsMenuOpen && candleColorsMenuPosition && createPortal(
+                <div
+                  ref={candleColorsPopoverRef}
+                  id="backtesting-candle-colors-menu"
+                  className="chart-candle-colors-panel"
+                  role="dialog"
+                  aria-label="Candle colors"
+                  style={{ position: "fixed", top: candleColorsMenuPosition.top, left: candleColorsMenuPosition.left, zIndex: 1000 }}
+                >
                   <label>
                     <span>Bullish / buy</span>
                     <input
@@ -3654,8 +3790,9 @@ export default function BacktestingLabPage() {
                     />
                     <code>{candleColors.bearish.toUpperCase()}</code>
                   </label>
-                </div>
-              </details>
+                </div>,
+                document.body,
+              )}
 
               <div className="chart-market-values flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-muted">
                 <span>
@@ -3720,6 +3857,57 @@ export default function BacktestingLabPage() {
               <span className="text-right text-[10px] text-muted sm:text-xs">
                 {hoveredCandle ? "Cursor · " : "Last bar · "}{displayCandle ? formatDate(displayCandle.time) : "Loading…"} UTC
               </span>
+            </div>
+
+            <div className="chart-order-bar">
+              <button
+                type="button"
+                onClick={() => openOrderTicket("SELL")}
+                disabled={!currentCandle || !(Number(quantity) > 0)}
+                title="Sell at the current replay price"
+                className="chart-order-button chart-order-sell"
+              >
+                <span>SELL</span>
+                <strong>{currentCandle ? formatPrice(currentCandle.close, symbol, pricePrecision) : "—"}</strong>
+              </button>
+
+              <div className="chart-order-volume">
+                <span>{sizeMode === "LOTS" ? "LOT SIZE" : "QUANTITY"}</span>
+                <div>
+                  <select
+                    value={sizeMode}
+                    onChange={(event) => changeSizeMode(event.target.value as SizeMode)}
+                    aria-label="Order size unit"
+                    title="Choose lots or quantity"
+                  >
+                    <option value="LOTS">Lots</option>
+                    <option value="QUANTITY">Units</option>
+                  </select>
+                  <input
+                    id="chart-order-size"
+                    type="number"
+                    min="0.000001"
+                    step="any"
+                    value={quantity}
+                    onChange={(event) => setQuantity(event.target.value)}
+                    aria-label={sizeMode === "LOTS" ? "Lot size" : "Order quantity"}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openOrderTicket("BUY")}
+                disabled={!currentCandle || !(Number(quantity) > 0)}
+                title="Buy at the current replay price"
+                className="chart-order-button chart-order-buy"
+              >
+                <span>BUY</span>
+                <strong>{currentCandle ? formatPrice(currentCandle.close, symbol, pricePrecision) : "—"}</strong>
+              </button>
+              {tradeMessage && (
+                <p className="chart-order-message" role="status" aria-live="polite">{tradeMessage}</p>
+              )}
             </div>
 
             <div className="chart-workspace">
@@ -4272,66 +4460,6 @@ export default function BacktestingLabPage() {
                 </div>
                 </details>
 
-                <details className="chart-floating-menu chart-floating-menu-trade">
-                  <summary className="chart-floating-summary">Trade ticket</summary>
-                <div
-                  className="chart-floating-menu-body pointer-events-auto w-full rounded-lg border border-border/80 bg-surface/90 p-1.5 shadow-lg backdrop-blur lg:w-auto"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onPointerMove={(event) => event.stopPropagation()}
-                  onPointerUp={(event) => event.stopPropagation()}
-                >
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <label className="flex items-center gap-1 text-[9px] font-semibold text-muted">
-                      <span>Size</span>
-                      <select
-                        value={sizeMode}
-                        onChange={(event) => changeSizeMode(event.target.value as SizeMode)}
-                        title="Forex lots use 100,000 base units per lot. Use quantity for shares and contracts."
-                        className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground"
-                        aria-label="Trade size unit"
-                      >
-                        <option value="LOTS">Lot size</option>
-                        <option value="QUANTITY">Quantity</option>
-                      </select>
-                    </label>
-                    <label htmlFor="chart-size" className="flex items-center gap-1 text-[9px] font-semibold text-muted">
-                      <span>{sizeMode === "LOTS" ? "Lots" : "Units"}</span>
-                      <input
-                        id="chart-size"
-                        type="number"
-                        min="0.000001"
-                        step="any"
-                        value={quantity}
-                        onChange={(event) => setQuantity(event.target.value)}
-                        className="h-7 w-16 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none focus:border-accent"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => openOrderTicket("BUY")}
-                      disabled={!currentCandle || !(Number(quantity) > 0)}
-                      title="Buy / Long"
-                      className="h-7 rounded-md bg-green-500/15 px-2.5 text-[10px] font-bold text-green-300 hover:bg-green-500/25 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Buy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openOrderTicket("SELL")}
-                      disabled={!currentCandle || !(Number(quantity) > 0)}
-                      title="Sell / Short"
-                      className="h-7 rounded-md bg-red-500/15 px-2.5 text-[10px] font-bold text-red-300 hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Sell
-                    </button>
-                  </div>
-                  {tradeMessage && (
-                    <p className="mt-1 max-w-64 truncate text-[9px] text-muted" role="status" aria-live="polite">
-                      {tradeMessage}
-                    </p>
-                  )}
-                </div>
-                </details>
               </div>
               {orderTicketSide && currentCandle && (
                 <div
@@ -4346,21 +4474,21 @@ export default function BacktestingLabPage() {
                   <section
                     role="dialog"
                     aria-modal="true"
-                    aria-labelledby="order-ticket-title"
+                    aria-labelledby="order-dialog-title"
                     className="max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-surface p-5 text-foreground shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent">Paper replay order</p>
-                        <h2 id="order-ticket-title" className="mt-1 text-lg font-bold">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent">Backtest order</p>
+                        <h2 id="order-dialog-title" className="mt-1 text-lg font-bold">
                           {orderTicketSide === "BUY" ? "Buy / Long" : "Sell / Short"} · {symbol}
                         </h2>
                       </div>
                       <button
                         type="button"
                         onClick={() => setOrderTicketSide(null)}
-                        aria-label="Close order ticket"
+                        aria-label="Close order form"
                         className="rounded-lg border border-border px-2 py-1 text-muted hover:border-accent hover:text-foreground"
                       >×</button>
                     </div>
