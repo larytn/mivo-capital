@@ -904,7 +904,7 @@ export default function ChatPage() {
                   onContextMenu={(event) => handleMessageContextMenu(event, message.id, isOwnMessage)}
                     className={`chat-message-stack${isEditing ? " is-editing" : ""}`}
                 >
-                  <div className={`chat-message-bubble group${isEditing ? " is-editing" : ""}`}>
+                  <div className={`chat-message-bubble group${isEditing ? " is-editing" : ""}${message.kind === "IMAGE" ? " is-image-message" : ""}`}>
                   {!isOwnMessage && !isGrouped && <div className="chat-message-head">
                       {!isOwnMessage && <span className="chat-message-author">{message.author.nickname}</span>}
                       {message.author.role === "ADMIN" && !isOwnMessage && <span className="text-[9px] text-muted">Mivo team</span>}
