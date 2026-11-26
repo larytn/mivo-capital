@@ -1210,14 +1210,12 @@ export default function BacktestingLabPage() {
   const [placingReplayStart, setPlacingReplayStart] = useState(false);
   const [replayPlacementX, setReplayPlacementX] = useState<number | null>(null);
   const [drawingsLoadedFor, setDrawingsLoadedFor] = useState("");
-  const [indicators, setIndicators] = useState<Record<ChartIndicator, boolean>>({
+  const indicators: Record<ChartIndicator, boolean> = {
     sma20: false,
     ema50: false,
     rsi14: false,
     bollinger20: false,
-  });
-  const [indicatorMenuOpen, setIndicatorMenuOpen] = useState(false);
-  const [indicatorsLoadedFor, setIndicatorsLoadedFor] = useState("");
+  };
   const [openToolGroup, setOpenToolGroup] = useState<string | null>(null);
 
   const drawingsRef = useRef<ChartDrawing[]>([]);
@@ -1370,7 +1368,6 @@ export default function BacktestingLabPage() {
   }, [timeframeMenuOpen, candleColorsMenuOpen]);
 
   const drawingStorageKey = `mivo.backtesting.drawings.v1:${assetClass}:${symbol}:${timeframe}`;
-  const indicatorStorageKey = `mivo.backtesting.indicators.v1:${assetClass}:${symbol}:${timeframe}`;
 
   const activeCandles = useMemo(
     () => candles.slice(0, visibleCount),
@@ -1432,30 +1429,6 @@ export default function BacktestingLabPage() {
     }, 180);
     return () => window.clearTimeout(timer);
   }, [drawingStorageKey, drawings, drawingsLoadedFor]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        const saved = window.localStorage.getItem(indicatorStorageKey);
-        const parsed = saved ? (JSON.parse(saved) as Partial<Record<ChartIndicator, boolean>>) : {};
-        setIndicators({
-          sma20: parsed.sma20 === true,
-          ema50: parsed.ema50 === true,
-          rsi14: parsed.rsi14 === true,
-          bollinger20: parsed.bollinger20 === true,
-        });
-      } catch {
-        setIndicators({ sma20: false, ema50: false, rsi14: false, bollinger20: false });
-      }
-      setIndicatorsLoadedFor(indicatorStorageKey);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [indicatorStorageKey]);
-
-  useEffect(() => {
-    if (indicatorsLoadedFor !== indicatorStorageKey) return;
-    window.localStorage.setItem(indicatorStorageKey, JSON.stringify(indicators));
-  }, [indicatorStorageKey, indicators, indicatorsLoadedFor]);
 
   const closedTrades = trades.filter((trade) => trade.status === "CLOSED");
   const realizedPnl = closedTrades.reduce(
@@ -3588,9 +3561,6 @@ export default function BacktestingLabPage() {
       <header className="border-b border-border bg-background/95">
         <div className="mx-auto flex w-full max-w-none items-center justify-between gap-4 px-4 py-3 lg:px-5">
           <div className="flex items-center gap-3"><BrandLogo className="h-9 w-[108px] object-contain" priority /><div><p className="text-sm font-semibold tracking-wide">BACKTESTING LAB</p><p className="text-xs text-muted">Replay the market. Test your edge.</p></div></div>
-          <span className={`hidden rounded-full border px-3 py-1 text-xs sm:inline-flex ${dataError ? "border-amber-300/30 bg-amber-300/10 text-amber-200" : "border-accent/20 bg-accent/10 text-accent"}`}>
-            {dataProvider ? `REAL MARKET DATA | ${dataProvider}` : loading ? "LOADING MARKET DATA" : dataError ? "DATA UNAVAILABLE" : "MARKET DATA"}
-          </span>
         </div>
       </header>
 
@@ -3979,7 +3949,8 @@ export default function BacktestingLabPage() {
             </div>
 
             <div className="chart-workspace">
-              <aside className="chart-drawing-rail relative z-40" aria-label="Chart drawing tools">
+              {/* Hide Mivo-built drawing controls until the official charting library is available. */}
+              <aside hidden inert className="chart-drawing-rail relative z-40" aria-label="Chart drawing tools">
                 <button
                   type="button"
                   title="Select and move drawings"
@@ -4152,6 +4123,7 @@ export default function BacktestingLabPage() {
               <svg
                 ref={drawingOverlayRef}
                 className="chart-drawing-overlay"
+                data-tools-disabled="true"
                 tabIndex={placingReplayStart ? 0 : -1}
                 aria-label="Chart drawings"
                 style={{
@@ -4401,7 +4373,7 @@ export default function BacktestingLabPage() {
               )}
               <div className="chart-floating-bar pointer-events-none absolute left-2 right-2 top-2 z-[30] flex flex-col items-start gap-2 lg:right-14 lg:flex-row lg:items-start lg:justify-between">
                 <details className="chart-floating-menu chart-floating-menu-replay">
-                  <summary className="chart-floating-summary">Replay &amp; indicators</summary>
+                  <summary className="chart-floating-summary">Replay controls</summary>
                 <div
                   className="chart-floating-menu-body pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg border border-border/80 bg-surface/90 p-1 shadow-lg backdrop-blur"
                   onPointerDown={(event) => event.stopPropagation()}
@@ -4487,45 +4459,6 @@ export default function BacktestingLabPage() {
                   >
                     ◷ Start
                   </button>
-                  <div className="relative" onPointerLeave={() => setIndicatorMenuOpen(false)}>
-                    <button
-                      type="button"
-                      onClick={() => setIndicatorMenuOpen((open) => !open)}
-                      aria-expanded={indicatorMenuOpen}
-                      aria-haspopup="true"
-                      className="h-7 rounded-md border border-border bg-background px-2 text-[10px] font-semibold text-foreground hover:border-accent"
-                    >
-                      Indicators{Object.values(indicators).filter(Boolean).length ? ` · ${Object.values(indicators).filter(Boolean).length}` : ""}
-                    </button>
-                    {indicatorMenuOpen && (
-                      <div className="indicator-menu absolute left-0 top-full z-[70] mt-1 w-64 rounded-lg border border-border bg-surface p-2 shadow-2xl">
-                        <p className="px-2 pb-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-muted">Moving averages</p>
-                        {([
-                          ["sma20", "Simple Moving Average", "SMA 20"],
-                          ["ema50", "Exponential Moving Average", "EMA 50"],
-                          ["bollinger20", "Bollinger Bands", "20 · 2"],
-                        ] as const).map(([indicator, name, settings]) => (
-                          <label key={indicator} className="indicator-option min-h-7 py-1 text-[11px]">
-                            <input
-                              type="checkbox"
-                              checked={indicators[indicator]}
-                              onChange={() => setIndicators((current) => ({ ...current, [indicator]: !current[indicator] }))}
-                            />
-                            <span>{name}</span><small>{settings}</small>
-                          </label>
-                        ))}
-                        <p className="mt-2 border-t border-border px-2 pb-1 pt-2 text-[9px] font-extrabold uppercase tracking-[0.14em] text-muted">Oscillators</p>
-                        <label className="indicator-option min-h-7 py-1 text-[11px]">
-                          <input
-                            type="checkbox"
-                            checked={indicators.rsi14}
-                            onChange={() => setIndicators((current) => ({ ...current, rsi14: !current.rsi14 }))}
-                          />
-                          <span>Relative Strength Index</span><small>RSI 14</small>
-                        </label>
-                      </div>
-                    )}
-                  </div>
                 </div>
                 </details>
 
@@ -4739,10 +4672,9 @@ export default function BacktestingLabPage() {
                 disabled={candles.length < 2}
               />
 
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px] text-muted sm:text-xs">
-                <span>Drag the chart to pan · drag the price scale to zoom</span>
-                <span>TradingView Lightweight Charts™ · Copyright © 2025 TradingView, Inc. · <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-accent">TradingView</a></span>
-              </div>
+              <p className="mt-3 text-right text-xs text-muted">
+                Drag the chart to pan · drag the price scale to zoom
+              </p>
             </div>
           </div>
         </section>

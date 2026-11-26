@@ -34,6 +34,7 @@ const pageTitles = new Map([
   ["/backtesting", "Backtesting lab"], ["/automation", "MT5 journal sync"], ["/announcements", "Announcements"],
   ["/academy", "Mivo Academy"],
   ["/signals", "VIP Signals"],
+  ["/legal/third-party-notices", "Legal notices"],
   ["/profile", "Profile"], ["/settings", "Settings"], ["/support", "Support"], ["/referrals", "Referrals"],
 ]);
 
@@ -65,6 +66,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     { label: "Profile", href: "/profile", icon: "profile" },
     { label: "Settings", href: "/settings", icon: "settings" },
     { label: "Support", href: "/support", icon: "support" },
+    { label: "Legal notices", href: "/legal/third-party-notices", icon: "support" },
   ];
 
   useEffect(() => {
