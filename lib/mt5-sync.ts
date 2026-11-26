@@ -278,9 +278,11 @@ export async function syncMt5ConnectionForUser(userId: string) {
 
 export async function getMt5ConnectionsForCron() {
   return prisma.$queryRaw<SyncConnection[]>`
-    SELECT "id", "userId", "providerAccountId", "server", "status", "lastSyncedAt"
-    FROM "BrokerConnection"
-    ORDER BY "lastSyncedAt" ASC NULLS FIRST
+    SELECT connection."id", connection."userId", connection."providerAccountId", connection."server", connection."status", connection."lastSyncedAt"
+    FROM "BrokerConnection" AS connection
+    INNER JOIN "User" AS member ON member."id" = connection."userId"
+    WHERE member."isVip" = TRUE OR member."role" = 'ADMIN'
+    ORDER BY connection."lastSyncedAt" ASC NULLS FIRST
     LIMIT 80
   `;
 }

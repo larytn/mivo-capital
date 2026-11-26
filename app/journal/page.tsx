@@ -48,6 +48,7 @@ export default function JournalPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filter, setFilter] = useState("ALL");
+  const [vipAccess, setVipAccess] = useState<"checking" | "active" | "required" | "unavailable">("checking");
 
   const [form, setForm] = useState({
     symbol: "",
@@ -105,6 +106,24 @@ export default function JournalPage() {
     const timer = window.setTimeout(() => void loadTrades(), 0);
     return () => window.clearTimeout(timer);
   }, [loadTrades]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/vip-membership/status", { cache: "no-store" })
+      .then(async (response) => {
+        if (response.status === 401) {
+          router.push("/login");
+          return;
+        }
+        const result = await response.json() as { hasVipAccess?: boolean };
+        if (!response.ok) throw new Error("Unable to check VIP access.");
+        if (!cancelled) setVipAccess(result.hasVipAccess ? "active" : "required");
+      })
+      .catch(() => {
+        if (!cancelled) setVipAccess("unavailable");
+      });
+    return () => { cancelled = true; };
+  }, [router]);
 
   async function saveTrade(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -278,31 +297,32 @@ export default function JournalPage() {
     <main className="min-h-screen bg-background px-4 py-6 text-foreground transition-colors duration-200 sm:px-6 sm:py-8 lg:px-10">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <header className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:mb-8 sm:gap-4">
           <div>
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="mb-5 inline-flex items-center gap-2 text-sm text-muted transition hover:text-foreground"
+              className="mb-3 inline-flex items-center gap-2 text-xs text-muted transition hover:text-foreground sm:mb-5 sm:text-sm"
             >
               <span aria-hidden="true">←</span>
               Dashboard
             </button>
 
-            <div className="flex items-center gap-3">
-              <MivoMark size={44} className="rounded-xl border border-border" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <MivoMark size={32} className="rounded-lg border border-border sm:hidden" />
+              <MivoMark size={44} className="hidden rounded-xl border border-border sm:block" />
 
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+                <p className="hidden text-xs font-semibold uppercase tracking-[0.2em] text-muted sm:block">
                   Mivo Capital
                 </p>
-                <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-2xl">
+                <h1 className="text-xl font-bold tracking-tight sm:mt-1 sm:text-2xl">
                   Trade Journal
                 </h1>
               </div>
             </div>
 
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted">
+            <p className="mt-2 hidden max-w-xl text-sm leading-6 text-muted sm:mt-4 sm:block">
               Record trades manually below, or connect MT5 to sync them. Review your execution and performance over time.
             </p>
           </div>
@@ -314,13 +334,25 @@ export default function JournalPage() {
             >
               Record trade manually
             </a>
-            <button
-              type="button"
-              onClick={() => router.push("/automation")}
-              className="rounded-xl border border-border bg-surface px-3 py-2.5 text-xs font-medium transition hover:bg-surface-raised sm:px-4 sm:text-sm"
-            >
-              Connect MT5
-            </button>
+            {vipAccess === "active" ? (
+              <button
+                type="button"
+                onClick={() => router.push("/automation")}
+                className="rounded-xl border border-border bg-surface px-3 py-2.5 text-xs font-medium transition hover:bg-surface-raised sm:px-4 sm:text-sm"
+              >
+                Connect MT5
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => router.push("/signals?feature=mt5")}
+                disabled={vipAccess === "checking" || vipAccess === "unavailable"}
+                className="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2.5 text-xs font-semibold text-accent transition hover:bg-accent/15 disabled:cursor-wait disabled:opacity-60 sm:px-4 sm:text-sm"
+                title={vipAccess === "unavailable" ? "VIP access is temporarily unavailable." : undefined}
+              >
+                {vipAccess === "checking" ? "Checking VIP…" : vipAccess === "unavailable" ? "MT5 access unavailable" : "Unlock MT5 with VIP"}
+              </button>
+            )}
 
             <button
               type="button"
@@ -370,57 +402,57 @@ export default function JournalPage() {
         {/* Performance Overview */}
         <section
           aria-label="Trading performance overview"
-          className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          className="mb-4 grid grid-cols-3 gap-1.5 sm:mb-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
         >
-          <div className={`${panelStyle} p-4 sm:p-6`}>
-            <div className="flex items-center justify-between gap-3">
-              <p className={mutedText}>Net P/L</p>
-              <span className="text-xs text-muted">AFTER FEES</span>
+          <div className={`${panelStyle} min-w-0 p-2 sm:p-6`}>
+            <div className="flex min-w-0 items-center justify-between gap-1 sm:gap-3">
+              <p className="truncate text-[9px] text-muted sm:text-sm">Net P/L</p>
+              <span className="hidden text-xs text-muted sm:inline">AFTER FEES</span>
             </div>
 
-            <p className="mt-5 break-words text-3xl font-semibold tracking-tight tabular-nums">
+            <p className="mt-1 truncate text-[13px] font-semibold tracking-tight tabular-nums sm:mt-5 sm:text-3xl">
               {money(netPnl)}
             </p>
 
-            <p className="mt-3 text-xs text-muted">
+            <p className="mt-3 hidden text-xs text-muted sm:block">
               From {closedTrades.length} closed{" "}
               {closedTrades.length === 1 ? "trade" : "trades"}
             </p>
           </div>
 
-          <div className={`${panelStyle} p-5 sm:p-6`}>
-            <p className={mutedText}>Closed Trades</p>
+          <div className={`${panelStyle} min-w-0 p-2 sm:p-6`}>
+            <p className="truncate text-[9px] text-muted sm:text-sm">Closed Trades</p>
 
-            <p className="mt-5 text-3xl font-semibold tracking-tight tabular-nums">
+            <p className="mt-1 truncate text-[13px] font-semibold tracking-tight tabular-nums sm:mt-5 sm:text-3xl">
               {closedTrades.length}
             </p>
 
-            <p className="mt-3 text-xs text-muted">
+            <p className="mt-3 hidden text-xs text-muted sm:block">
               {openTrades} currently open
             </p>
           </div>
 
-          <div className={`${panelStyle} p-5 sm:p-6`}>
-            <p className={mutedText}>Win Rate</p>
+          <div className={`${panelStyle} min-w-0 p-2 sm:p-6`}>
+            <p className="truncate text-[9px] text-muted sm:text-sm">Win Rate</p>
 
-            <p className="mt-5 text-3xl font-semibold tracking-tight tabular-nums">
+            <p className="mt-1 truncate text-[13px] font-semibold tracking-tight tabular-nums sm:mt-5 sm:text-3xl">
               {winRate.toFixed(1)}%
             </p>
 
-            <p className="mt-3 text-xs text-muted">
+            <p className="mt-3 hidden text-xs text-muted sm:block">
               {winners} winning trades out of {closedTrades.length} closed
             </p>
           </div>
         </section>
 
         {/* Record Trade */}
-        <section id="manual-trade-entry" tabIndex={-1} className={`${panelStyle} mb-10 p-4 sm:p-5`}>
-          <div className="mb-7 flex flex-wrap items-start justify-between gap-3">
+        <section id="manual-trade-entry" tabIndex={-1} className={`${panelStyle} mb-10 scroll-mt-4 p-3 sm:p-5`}>
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:mb-7">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 Trade Management
               </p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight">
+              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:mt-2 sm:text-xl">
                 Record a Trade
               </h2>
               <p className="mt-2 text-sm text-muted">

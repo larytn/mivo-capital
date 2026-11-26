@@ -3,6 +3,7 @@ import { getAuthenticatedUserId } from "@/lib/api-auth";
 import { MetaApiError } from "@/lib/metaapi";
 import { getMt5DatabaseIssueMessage } from "@/lib/mt5-db";
 import { syncMt5ConnectionForUser } from "@/lib/mt5-sync";
+import { getVipAccess } from "@/lib/vip-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,15 @@ export async function POST() {
   }
 
   try {
+    const membership = await getVipAccess(userId);
+    if (!membership) return NextResponse.json({ error: "Member account not found." }, { status: 401 });
+    if (!membership.active) {
+      return NextResponse.json(
+        { error: "VIP Signals membership is required for automated MT5 journaling.", code: "VIP_REQUIRED" },
+        { status: 403 },
+      );
+    }
+
     const result = await syncMt5ConnectionForUser(userId);
     return NextResponse.json(result);
   } catch (error) {

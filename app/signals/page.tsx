@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 type VipSignal = {
   id: string;
@@ -107,8 +108,11 @@ export default function VipSignalsPage() {
           <h1 className="mt-2 text-2xl font-bold sm:text-3xl">VIP Signals</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Trade ideas published by Mivo. Review the entry area, invalidation level and targets before making your own decision.</p>
         </div>
-        {!vipRequired && <div className="flex gap-2 rounded-xl border border-border bg-surface p-1" aria-label="Signal history filter">
-          {(["ACTIVE", "ALL"] as const).map((value) => <button key={value} type="button" onClick={() => setFilter(value)} aria-pressed={filter === value} className={`rounded-lg px-3 py-2 text-xs font-semibold ${filter === value ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}>{value === "ACTIVE" ? "Active" : "All history"}</button>)}
+        {!vipRequired && <div className="flex flex-wrap items-center gap-2">
+          <Link href="/automation" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent transition hover:bg-accent/15">Connect MT5 for journaling</Link>
+          <div className="flex gap-2 rounded-xl border border-border bg-surface p-1" aria-label="Signal history filter">
+            {(["ACTIVE", "ALL"] as const).map((value) => <button key={value} type="button" onClick={() => setFilter(value)} aria-pressed={filter === value} className={`rounded-lg px-3 py-2 text-xs font-semibold ${filter === value ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}>{value === "ACTIVE" ? "Active" : "All history"}</button>)}
+          </div>
         </div>}
       </div>
 
@@ -118,7 +122,7 @@ export default function VipSignalsPage() {
       {vipRequired ? <section className="mt-6 rounded-2xl border border-border bg-surface p-6 sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[.16em] text-accent">VIP access</p>
         <h2 className="mt-2 text-xl font-semibold">Choose VIP Signals membership</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Subscribe monthly or annually to access Mivo’s members-only signal area. You’ll see the plan price and currency on Paystack before confirming payment.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Subscribe monthly or annually to unlock Mivo’s members-only signal area and MT5 automated journaling. You’ll see the plan price and currency on Paystack before confirming payment.</p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {(["monthly", "annually"] as const).map((interval) => {
             const available = planAvailability[interval];

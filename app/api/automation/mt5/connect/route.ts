@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/api-auth";
 import { getMt5ConnectionForUser, getMt5DatabaseIssueMessage } from "@/lib/mt5-db";
 import { MetaApiError, metaApiRequest, type MetaApiAccount } from "@/lib/metaapi";
+import { getVipAccess } from "@/lib/vip-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,15 @@ export async function POST(request: Request) {
       : randomBytes(16).toString("hex");
 
   try {
+    const membership = await getVipAccess(userId);
+    if (!membership) return NextResponse.json({ error: "Member account not found." }, { status: 401 });
+    if (!membership.active) {
+      return NextResponse.json(
+        { error: "VIP Signals membership is required to connect MT5 for automated journaling.", code: "VIP_REQUIRED" },
+        { status: 403 },
+      );
+    }
+
     const existing = await getMt5ConnectionForUser(userId);
     if (existing) {
       return NextResponse.json(

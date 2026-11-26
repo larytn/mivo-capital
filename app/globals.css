@@ -162,8 +162,10 @@ button { cursor: pointer; }
 .backtesting-chart-card:fullscreen,
 .backtesting-chart-card.is-fullscreen {
   position: fixed; inset: 0; z-index: 120; display: flex; width: 100vw; height: 100dvh; max-height: 100dvh; flex-direction: column;
-  margin: 0; overflow: hidden; border: 0; border-radius: 0; background: var(--surface);
+  margin: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; border: 0; border-radius: 0; background: var(--surface);
 }
+.backtesting-chart-card:fullscreen .chart-symbol-toolbar,
+.backtesting-chart-card.is-fullscreen .chart-symbol-toolbar { position: sticky; top: 0; z-index: 60; flex: 0 0 auto; }
 .backtesting-chart-card:fullscreen > *,
 .backtesting-chart-card.is-fullscreen > * { flex: 0 0 auto; }
 .backtesting-chart-card:fullscreen .chart-workspace,
@@ -282,6 +284,12 @@ html[data-theme="light"] .mivo-mark-image { filter: brightness(.38) contrast(1.2
   .chart-fullscreen-toggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .backtesting-chart-card:fullscreen .chart-workspace,
   .backtesting-chart-card.is-fullscreen .chart-workspace { flex-direction: column; }
+  .backtesting-chart-card:fullscreen .chart-workspace,
+  .backtesting-chart-card.is-fullscreen .chart-workspace { min-height: clamp(340px, 56svh, 520px); flex: 1 0 auto; }
+  .backtesting-chart-card:fullscreen .chart-workspace > div.min-w-0,
+  .backtesting-chart-card.is-fullscreen .chart-workspace > div.min-w-0 { min-height: clamp(340px, 56svh, 520px); }
+  .backtesting-chart-card:fullscreen .chart-workspace > div.min-w-0 > .relative,
+  .backtesting-chart-card.is-fullscreen .chart-workspace > div.min-w-0 > .relative { min-height: clamp(340px, 56svh, 520px); }
   .backtesting-chart-card:fullscreen .chart-drawing-rail,
   .backtesting-chart-card.is-fullscreen .chart-drawing-rail { position: relative !important; bottom: auto; flex: 0 0 48px; overflow-x: auto; overflow-y: hidden; }
   .chart-brand-watermark { bottom: 28px; width: min(112px, 34vw); }

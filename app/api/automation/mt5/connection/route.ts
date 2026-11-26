@@ -7,6 +7,7 @@ import {
   setMt5ConnectionStatus,
 } from "@/lib/mt5-db";
 import { hasMetaApiToken, metaApiRequest, type MetaApiAccount } from "@/lib/metaapi";
+import { getVipAccess } from "@/lib/vip-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,9 +19,12 @@ export async function GET() {
   }
 
   try {
+    const membership = await getVipAccess(userId);
+    if (!membership) return NextResponse.json({ error: "Member account not found." }, { status: 401 });
+
     const connection = await getMt5ConnectionForUser(userId);
     if (!connection) {
-      return NextResponse.json({ connection: null, providerConfigured: hasMetaApiToken() });
+      return NextResponse.json({ connection: null, providerConfigured: hasMetaApiToken(), hasVipAccess: membership.active });
     }
 
     let status = connection.status;
@@ -52,6 +56,7 @@ export async function GET() {
 
     return NextResponse.json({
       providerConfigured: hasMetaApiToken(),
+      hasVipAccess: membership.active,
       connection: {
         id: connection.id,
         server: connection.server,

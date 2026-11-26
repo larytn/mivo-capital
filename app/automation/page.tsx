@@ -16,6 +16,7 @@ type Mt5Connection = {
 type ConnectionResponse = {
   connection: Mt5Connection | null;
   providerConfigured?: boolean;
+  hasVipAccess?: boolean;
   error?: string;
 };
 
@@ -58,6 +59,7 @@ export default function AutomationPage() {
   const [password, setPassword] = useState("");
   const [connection, setConnection] = useState<Mt5Connection | null>(null);
   const [providerConfigured, setProviderConfigured] = useState<boolean | null>(null);
+  const [vipAccess, setVipAccess] = useState<"checking" | "active" | "required" | "unavailable">("checking");
   const [busy, setBusy] = useState<"connect" | "sync" | "disconnect" | "" >("");
   const [error, setError] = useState("");
   const [connectionIssue, setConnectionIssue] = useState("");
@@ -70,11 +72,18 @@ export default function AutomationPage() {
       if (response.ok) {
         setConnection(result.connection);
         setProviderConfigured(result.providerConfigured === true);
+        setVipAccess(result.hasVipAccess ? "active" : "required");
         setConnectionIssue(result.error || "");
       } else {
+        if (response.status === 401) {
+          window.location.assign("/login");
+          return;
+        }
+        setVipAccess("unavailable");
         setConnectionIssue(result.error || "Unable to check the MT5 connection status.");
       }
     } catch {
+      setVipAccess("unavailable");
       setConnectionIssue("Mivo could not reach the MT5 connection service. The next status check will retry.");
     }
   }, []);
@@ -210,7 +219,19 @@ export default function AutomationPage() {
     }
   }
 
-  const connected = connection?.status === "CONNECTED";
+  const connected = vipAccess === "active" && connection?.status === "CONNECTED";
+  const membershipStatus = vipAccess === "checking"
+    ? "Checking VIP access"
+    : vipAccess === "required"
+      ? connection ? "Paused · VIP required" : "VIP required"
+      : vipAccess === "unavailable"
+        ? "Status unavailable"
+        : statusLabel(connection?.status);
+  const membershipTone = vipAccess === "active"
+    ? connection?.status
+    : vipAccess === "required"
+      ? "PENDING"
+      : null;
 
   return (
     <main className="min-h-screen bg-background px-5 py-9 text-foreground sm:px-8">
@@ -226,9 +247,9 @@ export default function AutomationPage() {
                 Connect MetaTrader 5 to import open positions and completed trades into Mivo. Your connection is read-only for journaling; Mivo does not place or manage orders.
               </p>
             </div>
-            <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${statusTone(connection?.status)}`}>
+            <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${statusTone(membershipTone)}`}>
               <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-300" : connection ? "bg-amber-200" : "bg-muted"}`} />
-              {statusLabel(connection?.status)}
+              {membershipStatus}
             </span>
           </div>
 
@@ -243,12 +264,37 @@ export default function AutomationPage() {
             </div>
             <div className="rounded-2xl border border-border bg-background/70 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.18em] text-muted">Sync schedule</p>
-              <p className="mt-2 text-sm font-bold">Every minute while connected</p>
+              <p className="mt-2 text-sm font-bold">{vipAccess === "active" ? "Every minute while connected" : "VIP membership required"}</p>
             </div>
           </div>
         </section>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
+          {vipAccess === "checking" ? (
+            <section className="rounded-3xl border border-border bg-surface p-6 sm:p-8" role="status">
+              <p className="text-sm text-muted">Checking VIP membership…</p>
+            </section>
+          ) : vipAccess === "unavailable" ? (
+            <section className="rounded-3xl border border-border bg-surface p-6 sm:p-8">
+              <p className="text-xs font-extrabold uppercase tracking-[.2em] text-accent">MT5 journal sync</p>
+              <h2 className="mt-2 text-2xl font-extrabold">VIP access could not be checked</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">{connectionIssue || "Try again when your connection is available."}</p>
+              <button type="button" onClick={() => void loadConnection()} className="mt-5 rounded-xl border border-border px-4 py-2.5 text-sm font-bold hover:border-accent">Try again</button>
+            </section>
+          ) : vipAccess === "required" ? (
+            <section className="rounded-3xl border border-accent/30 bg-surface p-6 sm:p-8">
+              <p className="text-xs font-extrabold uppercase tracking-[.2em] text-accent">VIP membership</p>
+              <h2 className="mt-2 text-2xl font-extrabold">Unlock MT5 automated journaling</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">VIP Signals membership unlocks MT5 account linking and automatic journal sync. Manual trade journaling remains available without a subscription.</p>
+              {connection && <p className="mt-4 rounded-xl border border-border bg-background p-4 text-sm text-muted">An MT5 account is linked to {connection.server}. Automated sync is paused until VIP access is active; existing journal entries remain available.</p>}
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/signals?feature=mt5" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-extrabold text-accent-foreground transition hover:brightness-110">View VIP Signals membership</Link>
+                {connection && <button type="button" onClick={disconnect} disabled={busy !== ""} className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-muted hover:border-red-400/40 hover:text-red-300 disabled:opacity-50">{busy === "disconnect" ? "Disconnecting…" : "Disconnect MT5"}</button>}
+              </div>
+              {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-200">{error}</p>}
+              {message && <p role="status" className="mt-4 rounded-xl border border-border bg-background p-4 text-sm text-muted">{message}</p>}
+            </section>
+          ) : (
           <section className="rounded-3xl border border-border bg-surface p-6 sm:p-8">
             <p className="text-xs font-extrabold uppercase tracking-[.2em] text-accent">MT5 account login</p>
             <h2 className="mt-2 text-2xl font-extrabold">Connect your MetaTrader 5 account</h2>
@@ -343,8 +389,9 @@ export default function AutomationPage() {
             {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-200">{error}</p>}
             {message && <p role="status" className="mt-4 rounded-xl border border-border bg-background p-4 text-sm text-muted">{message}</p>}
           </section>
+          )}
 
-          <aside className="rounded-3xl border border-border bg-surface p-6 sm:p-8">
+          {vipAccess === "active" && <aside className="rounded-3xl border border-border bg-surface p-6 sm:p-8">
             <p className="text-xs font-extrabold uppercase tracking-[.2em] text-accent">Read-only trade journaling</p>
             <ol className="mt-5 space-y-5">
               {[
@@ -363,7 +410,7 @@ export default function AutomationPage() {
               <p className="mt-2 text-xs leading-5 text-muted">This connection imports records only. It does not submit, modify, or close trades. You can disconnect at any time; existing journal entries stay in Mivo.</p>
             </div>
             <Link href="/journal" className="mt-5 inline-flex text-sm font-bold text-accent hover:underline">Open your trade journal →</Link>
-          </aside>
+          </aside>}
         </div>
       </div>
     </main>
