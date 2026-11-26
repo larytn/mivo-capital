@@ -3532,7 +3532,7 @@ export default function BacktestingLabPage() {
   };
 
   return (
-    <main className="backtesting-page min-h-screen bg-background text-foreground">
+    <main className="backtesting-page min-h-0 bg-background text-foreground">
       <header className="border-b border-border bg-background/95">
         <div className="mx-auto flex w-full max-w-none items-center justify-between gap-4 px-4 py-3 lg:px-5">
           <div className="flex items-center gap-3"><MivoMark size={40} className="rounded-xl border border-accent/20" /><div><p className="text-sm font-semibold tracking-wide">BACKTESTING LAB</p><p className="text-xs text-muted">Replay the market. Test your edge.</p></div></div>
@@ -4043,7 +4043,7 @@ export default function BacktestingLabPage() {
             >
               <div
                 ref={chartContainerRef}
-                className="chart-container h-[520px] w-full sm:h-[680px] xl:h-[calc(100vh-300px)] xl:min-h-[640px]"
+                className="chart-container w-full"
               />
               <div className="pointer-events-none absolute inset-0 z-10">
                 {!candles.length && (
