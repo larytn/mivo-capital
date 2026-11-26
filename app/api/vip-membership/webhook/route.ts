@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const customerEmail = typeof customer?.email === "string" ? customer.email.trim().toLowerCase() : "";
     const eventName = typeof payload.event === "string" ? payload.event : "";
 
-    if ((eventName === "charge.success" || eventName === "subscription.create") && metadata?.product === "VIP_SIGNALS" && userId) {
+    if ((eventName === "charge.success" || eventName === "subscription.create") && ["MIVO_PRO", "VIP_SIGNALS"].includes(String(metadata?.product)) && userId) {
       await prisma.user.updateMany({ where: { id: userId, email: customerEmail }, data: { isVip: true } });
     } else if (eventName === "subscription.disable" && customerEmail) {
       await prisma.user.updateMany({ where: { email: customerEmail, isVip: true }, data: { isVip: false } });

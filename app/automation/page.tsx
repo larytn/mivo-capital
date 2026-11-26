@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { MivoProModal } from "@/app/components/mivo-pro-modal";
 
 type Mt5Connection = {
   id: string;
@@ -60,6 +61,8 @@ export default function AutomationPage() {
   const [connection, setConnection] = useState<Mt5Connection | null>(null);
   const [providerConfigured, setProviderConfigured] = useState<boolean | null>(null);
   const [vipAccess, setVipAccess] = useState<"checking" | "active" | "required" | "unavailable">("checking");
+  const [mivoProOpen, setMivoProOpen] = useState(false);
+  const closeMivoPro = useCallback(() => setMivoProOpen(false), []);
   const [busy, setBusy] = useState<"connect" | "sync" | "disconnect" | "" >("");
   const [error, setError] = useState("");
   const [connectionIssue, setConnectionIssue] = useState("");
@@ -264,7 +267,7 @@ export default function AutomationPage() {
             </div>
             <div className="rounded-2xl border border-border bg-background/70 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.18em] text-muted">Sync schedule</p>
-              <p className="mt-2 text-sm font-bold">{vipAccess === "active" ? "Every minute while connected" : "VIP membership required"}</p>
+              <p className="mt-2 text-sm font-bold">{vipAccess === "active" ? "Every minute while connected" : "Mivo Pro membership required"}</p>
             </div>
           </div>
         </section>
@@ -272,7 +275,7 @@ export default function AutomationPage() {
         <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
           {vipAccess === "checking" ? (
             <section className="rounded-3xl border border-border bg-surface p-6 sm:p-8" role="status">
-              <p className="text-sm text-muted">Checking VIP membership…</p>
+              <p className="text-sm text-muted">Checking Mivo Pro access…</p>
             </section>
           ) : vipAccess === "unavailable" ? (
             <section className="rounded-3xl border border-border bg-surface p-6 sm:p-8">
@@ -283,12 +286,12 @@ export default function AutomationPage() {
             </section>
           ) : vipAccess === "required" ? (
             <section className="rounded-3xl border border-accent/30 bg-surface p-6 sm:p-8">
-              <p className="text-xs font-extrabold uppercase tracking-[.2em] text-accent">VIP membership</p>
+              <p className="text-xs font-extrabold uppercase tracking-[.2em] text-accent">Mivo Pro membership</p>
               <h2 className="mt-2 text-2xl font-extrabold">Unlock MT5 automated journaling</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">VIP Signals membership unlocks MT5 account linking and automatic journal sync. Manual trade journaling remains available without a subscription.</p>
+              <p className="mt-3 text-sm leading-6 text-muted">Mivo Pro unlocks MT5 account linking and automatic journal sync. Manual trade journaling remains available without a subscription.</p>
               {connection && <p className="mt-4 rounded-xl border border-border bg-background p-4 text-sm text-muted">An MT5 account is linked to {connection.server}. Automated sync is paused until VIP access is active; existing journal entries remain available.</p>}
               <div className="mt-5 flex flex-wrap gap-3">
-                <Link href="/signals?feature=mt5" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-extrabold text-accent-foreground transition hover:brightness-110">View VIP Signals membership</Link>
+                <button type="button" onClick={() => setMivoProOpen(true)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-extrabold text-accent-foreground transition hover:brightness-110">View Mivo Pro</button>
                 {connection && <button type="button" onClick={disconnect} disabled={busy !== ""} className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-muted hover:border-red-400/40 hover:text-red-300 disabled:opacity-50">{busy === "disconnect" ? "Disconnecting…" : "Disconnect MT5"}</button>}
               </div>
               {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-200">{error}</p>}
@@ -413,6 +416,7 @@ export default function AutomationPage() {
           </aside>}
         </div>
       </div>
+      <MivoProModal open={mivoProOpen} onClose={closeMivoPro} />
     </main>
   );
 }

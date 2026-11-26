@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { MivoMark } from "@/app/components/mivo-mark";
+import { MivoProModal } from "@/app/components/mivo-pro-modal";
 
 type Trade = {
   id: string;
@@ -49,6 +50,8 @@ export default function JournalPage() {
   const [success, setSuccess] = useState("");
   const [filter, setFilter] = useState("ALL");
   const [vipAccess, setVipAccess] = useState<"checking" | "active" | "required" | "unavailable">("checking");
+  const [mivoProOpen, setMivoProOpen] = useState(false);
+  const closeMivoPro = useCallback(() => setMivoProOpen(false), []);
 
   const [form, setForm] = useState({
     symbol: "",
@@ -334,25 +337,15 @@ export default function JournalPage() {
             >
               Record trade manually
             </a>
-            {vipAccess === "active" ? (
-              <button
-                type="button"
-                onClick={() => router.push("/automation")}
-                className="rounded-xl border border-border bg-surface px-3 py-2.5 text-xs font-medium transition hover:bg-surface-raised sm:px-4 sm:text-sm"
-              >
-                Connect MT5
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => router.push("/signals?feature=mt5")}
-                disabled={vipAccess === "checking" || vipAccess === "unavailable"}
-                className="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2.5 text-xs font-semibold text-accent transition hover:bg-accent/15 disabled:cursor-wait disabled:opacity-60 sm:px-4 sm:text-sm"
-                title={vipAccess === "unavailable" ? "VIP access is temporarily unavailable." : undefined}
-              >
-                {vipAccess === "checking" ? "Checking VIP…" : vipAccess === "unavailable" ? "MT5 access unavailable" : "Unlock MT5 with VIP"}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => vipAccess === "active" ? router.push("/automation") : setMivoProOpen(true)}
+              disabled={vipAccess === "checking"}
+              className="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2.5 text-xs font-semibold text-accent transition hover:bg-accent/15 disabled:cursor-wait disabled:opacity-60 sm:px-4 sm:text-sm"
+              title={vipAccess === "unavailable" ? "Membership could not be verified. Mivo Pro details are still available." : undefined}
+            >
+              Connect MT5
+            </button>
 
             <button
               type="button"
@@ -986,6 +979,7 @@ export default function JournalPage() {
           </div>
         </footer>
       </div>
+      <MivoProModal open={mivoProOpen} onClose={closeMivoPro} />
     </main>
   );
 }

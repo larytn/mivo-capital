@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     if (
       !response.ok || !result.status || data?.status !== "success" || data.reference !== reference ||
-      metadata?.product !== "VIP_SIGNALS" || !userId || !configuredPlanCode || metadataPlanCode !== configuredPlanCode ||
+      !["MIVO_PRO", "VIP_SIGNALS"].includes(String(metadata?.product)) || !userId || !configuredPlanCode || metadataPlanCode !== configuredPlanCode ||
       (verifiedPlanCode && verifiedPlanCode !== configuredPlanCode)
     ) return signalRedirect(request, "failed");
 

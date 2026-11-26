@@ -7,10 +7,10 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   const userId = await getAuthenticatedUserId();
-  if (!userId) return NextResponse.json({ error: "Sign in to subscribe to VIP Signals." }, { status: 401 });
+  if (!userId) return NextResponse.json({ error: "Sign in to subscribe to Mivo Pro." }, { status: 401 });
 
   const secretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
-  if (!secretKey) return NextResponse.json({ error: "VIP subscriptions are being configured. Please check back soon." }, { status: 503 });
+  if (!secretKey) return NextResponse.json({ error: "Mivo Pro subscriptions are being configured. Please check back soon." }, { status: 503 });
 
   let body: unknown;
   try { body = await request.json(); }
@@ -19,12 +19,12 @@ export async function POST(request: NextRequest) {
   if (!interval) return NextResponse.json({ error: "Choose a monthly or annual subscription." }, { status: 400 });
 
   const planCode = getVipPlanCode(interval);
-  if (!planCode) return NextResponse.json({ error: "This VIP subscription plan is not available yet." }, { status: 503 });
+  if (!planCode) return NextResponse.json({ error: "This Mivo Pro plan is not available yet." }, { status: 503 });
 
   try {
     const member = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, isVip: true, role: true } });
     if (!member) return NextResponse.json({ error: "Member account not found." }, { status: 401 });
-    if (member.isVip || member.role === "ADMIN") return NextResponse.json({ error: "Your account already has VIP access." }, { status: 409 });
+    if (member.isVip || member.role === "ADMIN") return NextResponse.json({ error: "Your account already has Mivo Pro access." }, { status: 409 });
 
     const appBaseUrl = getVipAppBaseUrl(request.url);
     if (!appBaseUrl) return NextResponse.json({ error: "VIP checkout is not configured for this website yet." }, { status: 503 });
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         email: member.email,
         plan: planCode,
         callback_url: new URL("/api/vip-membership/callback", appBaseUrl).toString(),
-        metadata: JSON.stringify({ product: "VIP_SIGNALS", userId: member.id, planInterval: interval, planCode }),
+        metadata: JSON.stringify({ product: "MIVO_PRO", userId: member.id, planInterval: interval, planCode }),
       }),
       signal: AbortSignal.timeout(15_000),
       cache: "no-store",

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { MivoProModal } from "@/app/components/mivo-pro-modal";
 
 type VipSignal = {
   id: string;
@@ -20,8 +21,6 @@ type VipSignal = {
   createdBy: { name: string };
 };
 
-type VipPlanInterval = "monthly" | "annually";
-
 function formatPrice(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(value);
 }
@@ -38,9 +37,9 @@ export default function VipSignalsPage() {
   const [vipRequired, setVipRequired] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"ACTIVE" | "ALL">("ACTIVE");
-  const [planAvailability, setPlanAvailability] = useState<{ monthly: boolean; annually: boolean }>({ monthly: false, annually: false });
-  const [checkoutInterval, setCheckoutInterval] = useState<VipPlanInterval | null>(null);
+  const [mivoProOpen, setMivoProOpen] = useState(false);
   const [membershipNotice, setMembershipNotice] = useState<"active" | "failed" | null>(null);
+  const closeMivoPro = useCallback(() => setMivoProOpen(false), []);
 
   const load = useCallback(async () => {
     try {
@@ -52,12 +51,8 @@ export default function VipSignalsPage() {
       }
       if (response.status === 403 && data.code === "VIP_REQUIRED") {
         setVipRequired(true);
+        setMivoProOpen(true);
         setError("");
-        const plansResponse = await fetch("/api/vip-membership/plans", { cache: "no-store" });
-        if (plansResponse.ok) {
-          const plans = await plansResponse.json() as { monthlyAvailable?: boolean; annualAvailable?: boolean };
-          setPlanAvailability({ monthly: plans.monthlyAvailable === true, annually: plans.annualAvailable === true });
-        }
         return;
       }
       if (!response.ok) throw new Error(data.error || "Unable to load VIP Signals.");
@@ -77,27 +72,6 @@ export default function VipSignalsPage() {
     if (result === "active" || result === "failed") setMembershipNotice(result);
   }, []);
 
-  const startCheckout = async (interval: VipPlanInterval) => {
-    setCheckoutInterval(interval);
-    setError("");
-    try {
-      const response = await fetch("/api/vip-membership/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval }),
-      });
-      const data = await response.json() as { authorizationUrl?: string; error?: string };
-      if (response.status === 401) {
-        window.location.assign("/login");
-        return;
-      }
-      if (!response.ok || !data.authorizationUrl) throw new Error(data.error || "Unable to open Paystack checkout.");
-      window.location.assign(data.authorizationUrl);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to open Paystack checkout.");
-      setCheckoutInterval(null);
-    }
-  };
   const visible = filter === "ACTIVE" ? signals.filter((signal) => signal.status === "ACTIVE") : signals;
 
   return (
@@ -117,28 +91,13 @@ export default function VipSignalsPage() {
       </div>
 
       <div className="mt-5 rounded-xl border border-amber-300/25 bg-amber-300/5 p-4 text-xs leading-5 text-amber-100/90">Signals are educational market commentary, not individualized financial advice or a guarantee of results. This area publishes ideas only; it does not place or copy trades.</div>
-      {membershipNotice && <p role="status" className={`mt-4 rounded-xl border p-4 text-sm ${membershipNotice === "active" ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-200" : "border-amber-300/30 bg-amber-300/5 text-amber-100"}`}>{membershipNotice === "active" ? "VIP membership is active. Your signals are loading." : "Checkout was not completed, so VIP access was not changed."}</p>}
+      {membershipNotice && <p role="status" className={`mt-4 rounded-xl border p-4 text-sm ${membershipNotice === "active" ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-200" : "border-amber-300/30 bg-amber-300/5 text-amber-100"}`}>{membershipNotice === "active" ? "Mivo Pro is active. Your included features are loading." : "Checkout was not completed, so Mivo Pro access was not changed."}</p>}
       {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-sm text-red-200">{error}</p>}
       {vipRequired ? <section className="mt-6 rounded-2xl border border-border bg-surface p-6 sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[.16em] text-accent">VIP access</p>
-        <h2 className="mt-2 text-xl font-semibold">Choose VIP Signals membership</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Subscribe monthly or annually to unlock Mivo’s members-only signal area and MT5 automated journaling. You’ll see the plan price and currency on Paystack before confirming payment.</p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {(["monthly", "annually"] as const).map((interval) => {
-            const available = planAvailability[interval];
-            const isBusy = checkoutInterval === interval;
-            return <article key={interval} className="flex flex-col rounded-xl border border-border bg-background p-5">
-              <p className="text-xs font-bold uppercase tracking-[.14em] text-accent">{interval === "monthly" ? "Monthly plan" : "Annual plan"}</p>
-              <h3 className="mt-2 text-lg font-semibold">{interval === "monthly" ? "Billed monthly" : "Billed annually"}</h3>
-              <p className="mt-2 flex-1 text-sm leading-6 text-muted">Plan price and currency are confirmed in Paystack checkout before payment.</p>
-              <button type="button" onClick={() => void startCheckout(interval)} disabled={!available || checkoutInterval !== null} className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:cursor-not-allowed disabled:opacity-50">
-                {isBusy ? "Opening secure checkout…" : available ? "Continue to Paystack" : "Plan not available yet"}
-              </button>
-            </article>;
-          })}
-        </div>
-        {!planAvailability.monthly && !planAvailability.annually && <p className="mt-4 text-xs leading-5 text-muted">VIP checkout is being configured. Monthly and annual options will appear here once Mivo activates them.</p>}
-        <p className="mt-5 text-xs leading-5 text-muted">Subscriptions are processed securely by Paystack. Cancellation and renewal terms are shown during checkout.</p>
+        <p className="text-xs font-bold uppercase tracking-[.16em] text-accent">Included with Mivo Pro</p>
+        <h2 className="mt-2 text-xl font-semibold">VIP Signals are part of Mivo Pro</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Mivo Pro includes VIP Signals, MT5 automated journaling, advanced Academy access, daily live streams and mentorship. Choose monthly or yearly billing in one place.</p>
+        <button type="button" onClick={() => setMivoProOpen(true)} className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-extrabold text-accent-foreground transition hover:brightness-110">View Mivo Pro</button>
       </section> : loading ? <p className="mt-8 text-sm text-muted">Loading VIP Signals…</p> : visible.length === 0 ? <section className="mt-6 rounded-2xl border border-dashed border-border p-8 text-center">
         <h2 className="font-semibold">No {filter === "ACTIVE" ? "active " : ""}signals yet</h2>
         <p className="mt-2 text-sm text-muted">New Mivo signal updates will appear here when published.</p>
@@ -158,6 +117,7 @@ export default function VipSignalsPage() {
           <p className="mt-4 border-t border-border pt-3 text-xs text-muted">Published by {signal.createdBy.name}</p>
         </article>)}
       </div>}
+      <MivoProModal open={mivoProOpen} onClose={closeMivoPro} />
     </main>
   );
 }

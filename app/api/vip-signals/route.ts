@@ -11,7 +11,7 @@ export async function GET() {
   try {
     const member = await prisma.user.findUnique({ where: { id: userId }, select: { isVip: true, role: true } });
     if (!member) return NextResponse.json({ error: "Member account not found." }, { status: 401 });
-    if (!member.isVip && member.role !== "ADMIN") return NextResponse.json({ error: "VIP membership is required to view this area.", code: "VIP_REQUIRED" }, { status: 403 });
+    if (!member.isVip && member.role !== "ADMIN") return NextResponse.json({ error: "Mivo Pro membership is required to view VIP Signals.", code: "VIP_REQUIRED" }, { status: 403 });
 
     const signals = await prisma.vipSignal.findMany({
       orderBy: [{ status: "asc" }, { publishedAt: "desc" }],

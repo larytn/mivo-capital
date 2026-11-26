@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     if (!membership) return NextResponse.json({ error: "Member account not found." }, { status: 401 });
     if (!membership.active) {
       return NextResponse.json(
-        { error: "VIP Signals membership is required to connect MT5 for automated journaling.", code: "VIP_REQUIRED" },
+        { error: "Mivo Pro membership is required to connect MT5 for automated journaling.", code: "VIP_REQUIRED" },
         { status: 403 },
       );
     }
