@@ -19,6 +19,7 @@ import {
   type MouseEventParams,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { BrandLogo } from "@/app/components/brand-logo";
 import { MivoMark } from "@/app/components/mivo-mark";
 
 type AssetClass =
@@ -1157,6 +1158,7 @@ function getPickerPosition(
 }
 
 export default function BacktestingLabPage() {
+  const [chartFullscreen, setChartFullscreen] = useState(false);
   const [assetClass, setAssetClass] = useState<AssetClass>("crypto");
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [timeframe, setTimeframe] =
@@ -1247,6 +1249,7 @@ export default function BacktestingLabPage() {
   }, [scheduleDrawingProjection]);
 
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const chartPanelRef = useRef<HTMLDivElement | null>(null);
   const timeframePickerRef = useRef<HTMLDivElement | null>(null);
   const timeframePopoverRef = useRef<HTMLDivElement | null>(null);
   const candleColorsPickerRef = useRef<HTMLButtonElement | null>(null);
@@ -1271,6 +1274,28 @@ export default function BacktestingLabPage() {
   const latestCandleTimeRef = useRef(0);
   const replayAtLatestRef = useRef(true);
   const candlesLengthRef = useRef(candles.length);
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setChartFullscreen(document.fullscreenElement === chartPanelRef.current);
+    };
+    const closeFallbackFullscreen = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.fullscreenElement) setChartFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    window.addEventListener("keydown", closeFallbackFullscreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+      window.removeEventListener("keydown", closeFallbackFullscreen);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!chartFullscreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [chartFullscreen]);
 
   useEffect(() => {
     setPortalReady(true);
@@ -1722,6 +1747,7 @@ export default function BacktestingLabPage() {
         background: { color: "#080a0d" },
         textColor: "#c6cbd1",
         fontFamily: "Montserrat, ui-sans-serif, system-ui, sans-serif",
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: "#1b1e24" },
@@ -3531,11 +3557,37 @@ export default function BacktestingLabPage() {
     setVisibleCount((count) => Math.max(count - 1, 2));
   };
 
+  const toggleChartFullscreen = async () => {
+    const panel = chartPanelRef.current;
+    if (!panel) return;
+
+    if (chartFullscreen) {
+      if (document.fullscreenElement === panel) {
+        try { await document.exitFullscreen(); }
+        catch { setChartFullscreen(false); }
+      } else {
+        setChartFullscreen(false);
+      }
+      return;
+    }
+
+    if (panel.requestFullscreen) {
+      try { await panel.requestFullscreen(); }
+      catch { setChartFullscreen(true); }
+    } else {
+      setChartFullscreen(true);
+    }
+  };
+
+  const chartPortalTarget = typeof document === "undefined"
+    ? null
+    : chartFullscreen ? chartPanelRef.current ?? document.body : document.body;
+
   return (
     <main className="backtesting-page min-h-0 bg-background text-foreground">
       <header className="border-b border-border bg-background/95">
         <div className="mx-auto flex w-full max-w-none items-center justify-between gap-4 px-4 py-3 lg:px-5">
-          <div className="flex items-center gap-3"><MivoMark size={40} className="rounded-xl border border-accent/20" /><div><p className="text-sm font-semibold tracking-wide">BACKTESTING LAB</p><p className="text-xs text-muted">Replay the market. Test your edge.</p></div></div>
+          <div className="flex items-center gap-3"><BrandLogo className="h-9 w-[108px] object-contain" priority /><div><p className="text-sm font-semibold tracking-wide">BACKTESTING LAB</p><p className="text-xs text-muted">Replay the market. Test your edge.</p></div></div>
           <span className={`hidden rounded-full border px-3 py-1 text-xs sm:inline-flex ${dataError ? "border-amber-300/30 bg-amber-300/10 text-amber-200" : "border-accent/20 bg-accent/10 text-accent"}`}>
             {dataProvider ? `REAL MARKET DATA | ${dataProvider}` : loading ? "LOADING MARKET DATA" : dataError ? "DATA UNAVAILABLE" : "MARKET DATA"}
           </span>
@@ -3641,7 +3693,7 @@ export default function BacktestingLabPage() {
         </details>
 
         <section className="grid min-w-0 gap-4">
-          <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface">
+          <div ref={chartPanelRef} className={`backtesting-chart-card min-w-0 overflow-hidden rounded-2xl border border-border bg-surface ${chartFullscreen ? "is-fullscreen" : ""}`}>
             <div className="chart-symbol-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
               <div className="flex flex-wrap items-center gap-3">
                 <select
@@ -3721,7 +3773,23 @@ export default function BacktestingLabPage() {
                 </button>
               </div>
 
-              {portalReady && timeframeMenuOpen && timeframeMenuPosition && createPortal(
+              <button
+                type="button"
+                className="chart-fullscreen-toggle"
+                aria-label={chartFullscreen ? "Exit chart full screen" : "View chart full screen"}
+                aria-pressed={chartFullscreen}
+                title={chartFullscreen ? "Exit full screen (Esc)" : "Full screen chart"}
+                onClick={toggleChartFullscreen}
+              >
+                {chartFullscreen ? (
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v5H3M16 3v5h5M8 21v-5H3m13 5v-5h5" /></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg>
+                )}
+                <span>{chartFullscreen ? "Exit full screen" : "Full screen"}</span>
+              </button>
+
+              {portalReady && chartPortalTarget && timeframeMenuOpen && timeframeMenuPosition && createPortal(
                 <div
                   ref={timeframePopoverRef}
                   id="backtesting-timeframe-menu"
@@ -3758,10 +3826,10 @@ export default function BacktestingLabPage() {
                     ))}
                   </div>
                 </div>,
-                document.body,
+                chartPortalTarget,
               )}
 
-              {portalReady && candleColorsMenuOpen && candleColorsMenuPosition && createPortal(
+              {portalReady && chartPortalTarget && candleColorsMenuOpen && candleColorsMenuPosition && createPortal(
                 <div
                   ref={candleColorsPopoverRef}
                   id="backtesting-candle-colors-menu"
@@ -3791,7 +3859,7 @@ export default function BacktestingLabPage() {
                     <code>{candleColors.bearish.toUpperCase()}</code>
                   </label>
                 </div>,
-                document.body,
+                chartPortalTarget,
               )}
 
               <div className="chart-market-values flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-muted">
@@ -4046,6 +4114,7 @@ export default function BacktestingLabPage() {
                 className="chart-container w-full"
               />
               <div className="pointer-events-none absolute inset-0 z-10">
+                <div className="chart-brand-watermark" aria-hidden="true"><BrandLogo /></div>
                 {!candles.length && (
                   <div className="absolute inset-0 flex items-center justify-center bg-background/75 px-6 text-center text-sm text-foreground">
                     {loading ? "Loading historical market data…" : dataError || "No candles available for this selection."}
@@ -4670,9 +4739,10 @@ export default function BacktestingLabPage() {
                 disabled={candles.length < 2}
               />
 
-              <p className="mt-3 text-right text-xs text-muted">
-                Drag the chart to pan · drag the price scale to zoom
-              </p>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px] text-muted sm:text-xs">
+                <span>Drag the chart to pan · drag the price scale to zoom</span>
+                <span>TradingView Lightweight Charts™ · Copyright © 2025 TradingView, Inc. · <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-accent">TradingView</a></span>
+              </div>
             </div>
           </div>
         </section>

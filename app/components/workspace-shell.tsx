@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ThemeToggle } from "./theme-provider";
 import { BrandLogo } from "./brand-logo";
 import { MivoMark } from "./mivo-mark";
@@ -59,7 +59,6 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const excluded = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
-  if (excluded.includes(pathname) || pathname.startsWith("/admin")) return children;
   const title = pageTitles.get(pathname) ?? "Workspace";
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const accountItems: NavItem[] = [
@@ -68,6 +67,21 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     { label: "Support", href: "/support", icon: "support" },
   ];
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [menuOpen]);
+
+  if (excluded.includes(pathname) || pathname.startsWith("/admin")) return children;
+
   async function logout() {
     try { await fetch("/api/logout", { method: "POST" }); }
     finally { window.location.href = "/login"; }
@@ -75,11 +89,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
   return <div className="workspace-shell">
     <button type="button" aria-label="Close navigation" onClick={() => setMenuOpen(false)} className={`workspace-scrim ${menuOpen ? "is-open" : ""}`} />
-    <aside className={`workspace-sidebar ${menuOpen ? "is-open" : ""}`}>
+    <aside className={`workspace-sidebar ${menuOpen ? "is-open" : ""}`} aria-hidden={!menuOpen} inert={!menuOpen}>
       <Link href="/dashboard" className="workspace-brand" onClick={() => setMenuOpen(false)}>
         <BrandLogo className="h-[68px] w-[110px]" priority />
       </Link>
-      <nav className="workspace-nav" aria-label="Workspace navigation">
+      <nav id="workspace-navigation" className="workspace-nav" aria-label="Workspace navigation">
         {sections.map((section) => <div key={section.label}><p className="workspace-nav-label">{section.label}</p>{section.items.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} aria-current={isActive(item.href) ? "page" : undefined} className={`workspace-nav-link ${isActive(item.href) ? "is-active" : ""}`}><span className="workspace-nav-icon"><WorkspaceIcon name={item.icon} /></span><span>{item.label}</span></Link>)}</div>)}
         <p className="workspace-nav-label">Your account</p>
         {accountItems.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} aria-current={isActive(item.href) ? "page" : undefined} className={`workspace-nav-link ${isActive(item.href) ? "is-active" : ""}`}><span className="workspace-nav-icon"><WorkspaceIcon name={item.icon} /></span><span>{item.label}</span></Link>)}
@@ -87,7 +101,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
       <div className="workspace-sidebar-footer"><div className="workspace-member"><MivoMark className="workspace-member-avatar" /><span className="min-w-0"><span className="workspace-member-name block">Mivo member</span><span className="workspace-member-caption block">Your trading workspace</span></span></div><button type="button" onClick={logout} className="workspace-signout">Sign out</button></div>
     </aside>
     <div className="workspace-content">
-      <header className="workspace-topbar"><div className="workspace-topbar-left"><button type="button" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} className="workspace-mobile-menu">{"\u2630"}</button><p className="workspace-crumb">Workspace <span className="mx-2">/</span><strong>{title}</strong></p></div><div className="workspace-topbar-actions"><ThemeToggle /><Link href="/profile" aria-label="Open profile" className="workspace-profile-link"><MivoMark size={26} className="border-0" /></Link></div></header>
+      <header className="workspace-topbar"><div className="workspace-topbar-left"><button type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-controls="workspace-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)} className="workspace-mobile-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg></button><p className="workspace-crumb">Workspace <span className="mx-2">/</span><strong>{title}</strong></p></div><div className="workspace-topbar-actions"><ThemeToggle /><Link href="/profile" aria-label="Open profile" className="workspace-profile-link"><MivoMark size={26} className="border-0" /></Link></div></header>
       {children}
     </div>
   </div>;
