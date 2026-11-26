@@ -303,16 +303,21 @@ export default function JournalPage() {
             </div>
 
             <p className="mt-4 max-w-xl text-sm leading-6 text-muted">
-              Track your execution. Measure your performance. Learn from
-              every trade.
+              Record trades manually below, or connect MT5 to sync them. Review your execution and performance over time.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <a
+              href="#manual-trade-entry"
+              className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition hover:bg-accent/90 sm:w-auto"
+            >
+              Record trade manually
+            </a>
             <button
               type="button"
               onClick={() => router.push("/automation")}
-              className="rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium transition hover:bg-surface-raised"
+              className="rounded-xl border border-border bg-surface px-3 py-2.5 text-xs font-medium transition hover:bg-surface-raised sm:px-4 sm:text-sm"
             >
               Connect MT5
             </button>
@@ -321,7 +326,7 @@ export default function JournalPage() {
               type="button"
               onClick={() => void loadTrades()}
               disabled={loading}
-              className="rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium transition hover:bg-surface-raised disabled:opacity-50"
+              className="rounded-xl border border-border bg-surface px-3 py-2.5 text-xs font-medium transition hover:bg-surface-raised disabled:opacity-50 sm:px-4 sm:text-sm"
             >
               {loading ? "Refreshing..." : "Refresh"}
             </button>
@@ -409,7 +414,7 @@ export default function JournalPage() {
         </section>
 
         {/* Record Trade */}
-        <section className={`${panelStyle} mb-10 p-4 sm:p-5`}>
+        <section id="manual-trade-entry" tabIndex={-1} className={`${panelStyle} mb-10 p-4 sm:p-5`}>
           <div className="mb-7 flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">

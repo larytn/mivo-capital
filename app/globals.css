@@ -125,8 +125,11 @@ button { cursor: pointer; }
 .chart-symbol-toolbar > div:first-child { min-width: 0; flex: 1 1 auto; }
 .chart-market-status { min-height: 34px; }
 .chart-floating-menu { position: relative; pointer-events: auto; }
-.chart-floating-summary { display: none; }
-.chart-floating-menu-body { display: flex; }
+.chart-floating-summary { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--border); border-radius: 8px; background: color-mix(in srgb, var(--surface) 94%, transparent); padding: 0 11px; color: var(--foreground); font-size: 11px; font-weight: 700; list-style: none; cursor: pointer; box-shadow: 0 4px 16px rgb(0 0 0 / 20%); backdrop-filter: blur(14px); }
+.chart-floating-summary::-webkit-details-marker { display: none; }
+.chart-floating-summary svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.chart-floating-menu-body { position: absolute; top: calc(100% + 8px); left: 0; z-index: 40; display: none; max-width: calc(100vw - 24px); }
+.chart-floating-menu[open] > .chart-floating-menu-body { display: flex; }
 .chart-order-bar { position: relative; z-index: 25; display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 184px) minmax(0, 1fr); align-items: stretch; gap: 9px; border-bottom: 1px solid var(--border); background: var(--background); padding: 9px 12px; }
 .chart-order-button { display: flex; min-width: 0; min-height: 38px; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border: 1px solid transparent; border-radius: 8px; color: #fff; line-height: 1.1; }
 .chart-order-button span { font-size: 9px; font-weight: 850; letter-spacing: .08em; }
@@ -241,8 +244,6 @@ html[data-theme="light"] .mivo-mark-image { filter: brightness(.38) contrast(1.2
   .workspace-content > main { padding-top: 0; }
   .workspace-crumb { font-size: 10px; }
   .workspace-topbar-left, .workspace-topbar-actions { gap: 8px; }
-  .backtesting-page > header > div { min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
-  .backtesting-page > header .brand-logo { width: 96px; height: auto; }
   .backtesting-page > div { gap: 10px; padding-top: 10px; }
   .chart-settings-summary { min-height: 40px; padding-right: 10px; padding-left: 12px; font-size: 11px; }
   .chart-settings-summary-meta { overflow: hidden; max-width: 56%; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
@@ -272,11 +273,8 @@ html[data-theme="light"] .mivo-mark-image { filter: brightness(.38) contrast(1.2
   .chart-rail-button { width: 32px; height: 34px; flex: 0 0 32px; }
   .chart-rail-divider { width: 1px; height: 22px; flex: 0 0 1px; margin: 0 3px; }
   .chart-tool-group-menu { position: fixed !important; z-index: 80 !important; top: auto !important; right: 12px !important; bottom: calc(58px + env(safe-area-inset-bottom)) !important; left: 12px !important; width: auto !important; max-width: none !important; max-height: min(62svh, 28rem) !important; }
-  .chart-floating-bar { top: auto; right: 8px; bottom: 8px; left: 8px; flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 8px; }
-  .chart-floating-summary { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 8px; background: color-mix(in srgb, var(--surface) 94%, transparent); padding: 0 11px; color: var(--foreground); font-size: 11px; font-weight: 700; list-style: none; cursor: pointer; box-shadow: 0 4px 16px rgb(0 0 0 / 20%); backdrop-filter: blur(14px); }
-  .chart-floating-summary::-webkit-details-marker { display: none; }
-  .chart-floating-menu:not([open]) > .chart-floating-menu-body { display: none; }
-  .chart-floating-menu[open] > .chart-floating-menu-body { position: absolute; bottom: calc(100% + 8px); max-height: min(58svh, 25rem); overflow-y: auto; }
+  .chart-floating-bar { top: 8px; right: 8px; bottom: auto; left: 8px; flex-direction: row; align-items: flex-start; justify-content: flex-start; gap: 8px; }
+  .chart-floating-menu[open] > .chart-floating-menu-body { top: calc(100% + 8px); bottom: auto; max-height: min(58svh, 25rem); overflow-y: auto; }
   .chart-floating-menu-replay[open] > .chart-floating-menu-body { right: auto; left: 0; width: min(90vw, 25rem); }
   .backtesting-page { min-height: calc(100svh - 58px); }
   .backtesting-page .chart-container { height: clamp(440px, 64svh, 700px); }
@@ -288,10 +286,6 @@ html[data-theme="light"] .mivo-mark-image { filter: brightness(.38) contrast(1.2
   .backtesting-chart-card.is-fullscreen .chart-drawing-rail { position: relative !important; bottom: auto; flex: 0 0 48px; overflow-x: auto; overflow-y: hidden; }
   .chart-brand-watermark { bottom: 28px; width: min(112px, 34vw); }
   .backtesting-page .chart-overlay-menu-body { max-width: calc(100vw - 24px); }
-}
-
-@media (min-width: 641px) {
-  .chart-floating-menu:not([open]) > .chart-floating-menu-body { display: flex; }
 }
 
 @media (display-mode: standalone) {

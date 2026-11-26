@@ -3558,12 +3558,6 @@ export default function BacktestingLabPage() {
 
   return (
     <main className="backtesting-page min-h-0 bg-background text-foreground">
-      <header className="border-b border-border bg-background/95">
-        <div className="mx-auto flex w-full max-w-none items-center justify-between gap-4 px-4 py-3 lg:px-5">
-          <div className="flex items-center gap-3"><BrandLogo className="h-9 w-[108px] object-contain" priority /><div><p className="text-sm font-semibold tracking-wide">BACKTESTING LAB</p><p className="text-xs text-muted">Replay the market. Test your edge.</p></div></div>
-        </div>
-      </header>
-
       <div className="mx-auto w-full max-w-none space-y-4 px-3 py-5 sm:px-4 lg:px-5">
         <details className="chart-settings-panel rounded-xl border border-border bg-surface">
           <summary className="chart-settings-summary">
@@ -4373,7 +4367,10 @@ export default function BacktestingLabPage() {
               )}
               <div className="chart-floating-bar pointer-events-none absolute left-2 right-2 top-2 z-[30] flex flex-col items-start gap-2 lg:right-14 lg:flex-row lg:items-start lg:justify-between">
                 <details className="chart-floating-menu chart-floating-menu-replay">
-                  <summary className="chart-floating-summary">Replay controls</summary>
+                  <summary className="chart-floating-summary">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a8 8 0 1 1 2.3 5.7M4 5v6h6" /></svg>
+                    <span>Replay</span>
+                  </summary>
                 <div
                   className="chart-floating-menu-body pointer-events-auto flex flex-wrap items-center gap-1 rounded-lg border border-border/80 bg-surface/90 p-1 shadow-lg backdrop-blur"
                   onPointerDown={(event) => event.stopPropagation()}
@@ -4679,7 +4676,7 @@ export default function BacktestingLabPage() {
           </div>
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6" aria-label="Backtesting performance summary">
           <StatCard label="Net P&L" value={formatMoney(realizedPnl + unrealizedPnl)} hint={`${formatMoney(realizedPnl)} realized`} positive={realizedPnl + unrealizedPnl >= 0} />
           <StatCard label="Win rate" value={`${winRate.toFixed(1)}%`} hint={`${wins} winning trades`} />
           <StatCard label="Trades" value={`${closedTrades.length} closed`} hint={`${openTrades.length} open position${openTrades.length === 1 ? "" : "s"}`} />
@@ -4894,10 +4891,10 @@ function StatCard({
   positive?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-4">
-      <p className="text-xs text-muted">{label}</p>
+    <div className="min-w-0 rounded-xl border border-border bg-surface p-3 sm:rounded-2xl sm:p-4">
+      <p className="truncate text-[10px] text-muted sm:text-xs">{label}</p>
       <p
-        className={`mt-2 text-2xl font-semibold tracking-tight ${
+        className={`mt-1.5 truncate text-lg font-semibold tracking-tight tabular-nums sm:mt-2 sm:text-xl xl:text-2xl ${
           positive === undefined
             ? "text-foreground"
             : positive
@@ -4907,7 +4904,7 @@ function StatCard({
       >
         {value}
       </p>
-      <p className="mt-1 text-xs text-muted">{hint}</p>
+      <p className="mt-1 line-clamp-2 text-[9px] leading-4 text-muted sm:text-[10px] xl:text-xs">{hint}</p>
     </div>
   );
 }
